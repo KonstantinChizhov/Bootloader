@@ -1,0 +1,20 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "stm32l471",
+            "type": "shell",
+            "command": "scons device=stm32l471",
+            "problemMatcher": {
+                "base": "$gcc",
+                "fileLocation": "autoDetect"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
