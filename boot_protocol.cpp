@@ -23,24 +23,62 @@ using namespace std::placeholders;
 bool BootloaderProtocol::Init()
 {
     Clock::HsiClock::Enable();
-	BootDeviceClock::SelectClockSource(Clock::UsartClockSrc::Hsi);
+    BootDeviceClock::SelectClockSource(Clock::UsartClockSrc::Hsi);
 
     rtuTransport.SetStaticBuffers(&rxChunk, &txChunk);
     BootDevice::Init(115200);
     BootDevice::SelectTxRxPins<TxPin, RxPin>();
     BootDevice::SetRxTimeout(20);
 
-    //BootDevice::SelectDePin<DePin>();
+    BootDevice::SelectDePin<DePin>();
 
     modbus.SetAddress(BootModbusAddr);
-    modbus.OnWriteHoldingRegs = [this] (uint16_t s, uint16_t c, DataBuffer &b){ return WriteHoldingRegisters(s, c, b);};
-    modbus.OnReadHoldingRegs = [this] (uint16_t s, uint16_t c, DataBuffer &b){ return ReadHoldingRegisters(s, c, b);};
+    modbus.OnWriteHoldingRegs = [this](uint16_t s, uint16_t c, DataBuffer &b) { return WriteHoldingRegisters(s, c, b); };
+    modbus.OnReadHoldingRegs = [this](uint16_t s, uint16_t c, DataBuffer &b) { return ReadHoldingRegisters(s, c, b); };
+    modbus.OnReadInputRegisters = [this](uint16_t s, uint16_t c, DataBuffer &b) { return ReadInputRegisters(s, c, b); };
 
     if (!rtuTransport.StartListen())
     {
         return false;
     }
     return true;
+}
+
+uint16_t BootloaderProtocol::GetPageMapItem(uint16_t index)
+{
+    PageProps prop = (PageProps)(index % PageMapEntrySize);
+    uint16_t page = index / PageMapEntrySize;
+    if (page >= Flash::PageCount())
+    {
+        return 0;
+    }
+    if (prop == PageProps::SizeLo)
+    {
+        return (uint16_t)(Flash::PageSize(page) & 0xffff);
+    }
+    if (prop == PageProps::SizeHi)
+    {
+        return (uint16_t)((Flash::PageSize(page) >> 16) & 0xffff);
+    }
+    if (prop == PageProps::AddressLo)
+    {
+        return (uint16_t)(Flash::PageAddress(page) & 0xffff);
+    }
+    if (prop == PageProps::AddressHi)
+    {
+        return (uint16_t)((Flash::PageAddress(page) >> 16) & 0xffff);
+    }
+    return 0;
+}
+
+ModbusError BootloaderProtocol::ReadInputRegisters(uint16_t start, uint16_t count, DataBuffer &buffer)
+{
+    uint16_t end = std::min<uint16_t>(start + count, Flash::PageCount() * PageMapEntrySize);
+    for (uint16_t reg = start; reg < end; reg++)
+    {
+        buffer.WriteU16Be(GetPageMapItem(reg));
+    }
+    return ModbusError::NoError;
 }
 
 ModbusError BootloaderProtocol::ReadHoldingRegisters(uint16_t start, uint16_t count, DataBuffer &buffer)
@@ -57,12 +95,94 @@ ModbusError BootloaderProtocol::ReadHoldingRegisters(uint16_t start, uint16_t co
 
 ModbusError BootloaderProtocol::WriteHoldingRegisters(uint16_t start, uint16_t count, DataBuffer &buffer)
 {
-    uint16_t endReg = std::min<uint16_t>(start + count, PageBuffer.size());
+    uint16_t endReg = start + count;
+    if ((start >= CommandAddress && start < CommandAddress + CommandParamsSize) || (endReg >= CommandAddress && endReg < CommandAddress + CommandParamsSize))
+    {
+        uint16_t startInRange = (uint16_t)std::max<int>(start - CommandAddress, 0);
+        uint16_t countInRange = std::min<uint16_t>(count, CommandParamsSize - startInRange);
+        WriteCommand(startInRange, countInRange, buffer);
+    }
 
+    if ((start >= PageBufferAddr && start < PageBufferAddr + PageBuffer.size()) || (endReg >= PageBufferAddr && endReg < PageBufferAddr + PageBuffer.size()))
+    {
+        uint16_t startInRange = (uint16_t)std::max<int>(start - PageBufferAddr, 0);
+        uint16_t countInRange = std::min<uint16_t>(count, PageBuffer.size() - startInRange);
+        WriteBuffer(startInRange, countInRange, buffer);
+    }
+
+    return ModbusError::NoError;
+}
+
+ModbusError BootloaderProtocol::WriteBuffer(uint16_t start, uint16_t count, DataBuffer &buffer)
+{
+    uint16_t endReg = std::min<uint16_t>(start + count, PageBuffer.size());
     for (uint16_t reg = start; reg < endReg; reg++)
     {
         PageBuffer[reg] = buffer.ReadU16Be();
     }
+    return ModbusError::NoError;
+}
+
+ModbusError BootloaderProtocol::WriteCommand(uint16_t start, uint16_t count, DataBuffer &buffer)
+{
+    uint16_t endReg = std::min<uint16_t>(start + count, CommandParamsSize);
+    for (uint16_t reg = start; reg < endReg; reg++)
+    {
+        uint16_t value = buffer.ReadU16Be();
+        CommandLayout field = (CommandLayout)reg;
+        if (field == CommandLayout::Page)
+        {
+            if(value >= _bootloader.BootStartBootPage())
+            {
+                return ModbusError::IllegalValue;
+            }
+            _commandData.page = value;
+        }
+        if (field == CommandLayout::Offset)
+        {
+            if(value >= Flash::PageSize(_commandData.page))
+            {
+                return ModbusError::IllegalValue;
+            }
+            _commandData.offset = value;
+        }
+        if (field == CommandLayout::Length)
+        {
+            if(value >= Flash::PageSize(_commandData.page) - _commandData.offset)
+            {
+                return ModbusError::IllegalValue;
+            }
+            _commandData.length = value;
+        }
+        if (field == CommandLayout::Command)
+        {
+            if (!ExecuteCommand(static_cast<BootCommand>(value)))
+            {
+                return ModbusError::NotAcknowledge;
+            }
+        }
+    }
 
     return ModbusError::NoError;
+}
+
+bool BootloaderProtocol::ExecuteCommand(BootCommand command)
+{
+    _bootloader.GetBootData().error = BootError::Success;
+    switch(command)
+    {
+        case BootCommand::PageErase:
+            return _bootloader.EraseFlash(_commandData.page);
+        case BootCommand::PageWrite:
+            return _bootloader.WriteFlash(PageBuffer.data(), _commandData.page, _commandData.length, _commandData.offset);
+        case BootCommand::RunApplication:
+            return _bootloader.RunApplication();
+        case BootCommand::PageRead:
+        case BootCommand::None:
+        break;
+        default:
+            _bootloader.GetBootData().error = BootError::WrongCommand;
+            return false;
+    }
+    return true;
 }

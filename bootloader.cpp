@@ -1,5 +1,6 @@
 
 #include <flash.h>
+#include <Storage/NvmStorage.h>
 #include <usart.h>
 #include <iopins.h>
 
@@ -7,25 +8,107 @@
 #include "bootloader.h"
 #include "boot_protocol.h"
 
+extern "C" void Reset_Handler();
+
 using namespace Bootloader;
+
+const uint32_t nvmPage = Flash::AddrToPage((void *)_nvmStart);
+const uint32_t nvmPageCount = (_nvmEnd - _nvmStart) / Flash::PageSize(nvmPage);
+Storage::NvmStorage<AppEntryPoint> entryPointStorage(nvmPage, nvmPageCount);
 
 BootloaderApp::BootloaderApp()
 	: _bootdata{
 		  bootSignature : {'R', 'U', 'B', 'I', 'N', ' ', 'B', 'O', 'O', 'T'},
 		  mcuType : {'S', 'T', 'M', '3', '2', 'L', '4', '7', '1'},
-		  bootVersion : BootVersion
+		  bootVersion : BootVersion,
+		  deviceId : {0, 0, 0, 0},
+		  error : BootError::Success,
+		  pageCount : 0,
+		  applicationPageCount : 0,
+		  totalFlashSizeLo : 0,
+		  totalFlashSizeHi : 0
 	  }
 {
 }
 
-bool BootloaderApp::WriteFlash(const uint16_t *data, size_t size, uint32_t address)
+bool BootloaderApp::ReplaceAndStoreAppEntryPoint(uint16_t *data)
 {
+	uint32_t *ptr = reinterpret_cast<uint32_t *>(data);
+	AppEntryPoint entryPointData{
+		version : 0,
+		appStackPointer : ptr[0],
+		appEntryAddr : ptr[1],
+		reserved : 0xffffffff
+	};
+	if (!entryPointStorage.Write(entryPointData))
+	{
+		_bootdata.error = BootError::ErrorStoringEntryPoint;
+		return false;
+	}
+
+	ptr[0] = (uint32_t)&_estack;
+	ptr[1] = (uint32_t)&Reset_Handler;
+}
+
+bool BootloaderApp::WriteFlash(uint16_t *data, uint16_t page, uint16_t size, uint16_t offset)
+{
+	if (size < 8)
+	{
+		_bootdata.error = BootError::ArgumentError;
+		return false;
+	}
+
+	if (offset + size > Flash::PageSize(page))
+	{
+		_bootdata.error = BootError::WrongPageNumber;
+		return false;
+	}
+	if (offset & 0x7) // dest should be aligned with a double word address
+	{
+		_bootdata.error = BootError::AddrNotAligned;
+		return false;
+	}
+	if (size & 0x7) // length multiple of 8
+	{
+		_bootdata.error = BootError::LengthNotAligned;
+		return false;
+	}
+	if (page >= BootStartBootPage())
+	{
+		_bootdata.error = BootError::PageIsProtected;
+		return false;
+	}
+	uint32_t address = Flash::PageAddress(page) + offset;
+	if (!IsRegionClear(address, size))
+	{
+		_bootdata.error = BootError::RegionIsNotClear;
+		return false;
+	}
+
+	if (page == 0)
+	{
+		if(!ReplaceAndStoreAppEntryPoint(data))
+		{
+			return false;
+		}
+	}
+
+	if (!Flash::WritePage(page, data, size, offset))
+	{
+		_bootdata.error = BootError::WritingError;
+		return false;
+	}
 	return true;
 }
 
 bool BootloaderApp::EraseFlash(uint32_t page)
 {
-	return true;
+	if (page >= BootStartBootPage())
+	{
+		_bootdata.error = BootError::PageIsProtected;
+		return false;
+	}
+	return Flash::ErasePage(page);
 }
 
 BootData &BootloaderApp::GetBootData()
@@ -35,13 +118,16 @@ BootData &BootloaderApp::GetBootData()
 
 void BootloaderApp::InitBootData()
 {
-	_bootdata.pageCount = Flash::PageCount();
 	uint32_t *uid = reinterpret_cast<uint32_t *>(UID_BASE);
 	_bootdata.deviceId[0] = uid[0];
 	_bootdata.deviceId[1] = uid[1];
 	_bootdata.deviceId[2] = uid[2];
 	_bootdata.deviceId[0] = 0;
-	_bootdata.pageSizeMultiplier = 16;
+
+	_bootdata.pageCount = Flash::PageCount();
+	_bootdata.applicationPageCount = BootStartBootPage();
+	_bootdata.totalFlashSizeLo = (uint16_t)(Flash::TotalSize() & 0xffff);
+	_bootdata.totalFlashSizeHi = (uint16_t)((Flash::TotalSize() >> 16) & 0xffff);
 }
 
 uint32_t BootloaderApp::BootStartAddress()
@@ -57,14 +143,14 @@ uint32_t BootloaderApp::BootStartBootPage()
 bool BootloaderApp::PageFull(uint32_t page)
 {
 	unsigned *ptr = (unsigned *)Flash::PageAddress(page);
-	unsigned size = Flash::PageSize(page) / 4;
+	unsigned size = Flash::PageSize(page) / sizeof(unsigned);
 	return (ptr[0] != 0xffffffff) && (ptr[size - 1] != 0xffffffff);
 }
 
 bool BootloaderApp::PageEmpty(uint32_t page)
 {
 	unsigned *ptr = (unsigned *)Flash::PageAddress(page);
-	unsigned size = Flash::PageSize(page) / 4;
+	unsigned size = Flash::PageSize(page) / sizeof(unsigned);
 	return (ptr[0] == 0xffffffff) && (ptr[size - 1] == 0xffffffff);
 }
 
@@ -81,38 +167,15 @@ bool BootloaderApp::IsRegionClear(uint32_t address, size_t size)
 
 bool BootloaderApp::FindEntryPoint(uint32_t *sp, uint32_t *entry)
 {
-	for (unsigned page = 0; page < Flash::PageCount(); page++)
+	AppEntryPoint entryPoint;
+	if(!entryPointStorage.Read(entryPoint))
 	{
-		unsigned addr = Flash::PageAddress(page);
-		unsigned size = Flash::PageSize(page) / 4; // size in dwords
-		volatile unsigned *ptr = (unsigned *)addr;
-
-		// если страница не полная и не пустая - она может содержать точку входа
-		if (!PageFull(page) && !PageEmpty(page))
-		{
-			// линейный поиск в частично заполненой странице
-			for (unsigned i = 0; i < size; i++)
-			{
-				if (ptr[i] == EntryPointMarker1)
-				{
-					if (ptr[i + 1] == EntryPointMarker2)
-					{
-						*sp = ptr[i + 2];
-						*entry = ptr[i + 3];
-						return true;
-					}
-				}
-			}
-		}
-		// особый случай оба маркера в самом конце полной страницы
-		else if (ptr[size - 4] == EntryPointMarker1 && ptr[size - 3] == EntryPointMarker2)
-		{
-			*sp = ptr[size - 2];
-			*entry = ptr[size - 1];
-			return true;
-		}
+		_bootdata.error = BootError::EntryPointNotFound;
+		return false;
 	}
-	return false;
+	*sp = entryPoint.appStackPointer;
+	*entry = entryPoint.appEntryAddr;
+	return true;
 }
 
 void BootloaderApp::SetVectTable(const void *table)

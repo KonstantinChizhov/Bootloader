@@ -28,6 +28,7 @@ void Blink()
 
 int main()
 {
+    bootloader.SetVectTable(&g_pfnVectors[0]);
     Portb::Enable();
     Porta::Enable();
     Portc::Enable();
@@ -42,7 +43,6 @@ int main()
     //Led::Set();
 
     Watchdog::Start(2000);
-    bootloader.SetVectTable(&g_pfnVectors[0]);
     bootloader.InitBootData();
 
     SysTickTimer::Init(1);
@@ -50,7 +50,6 @@ int main()
     GetCurrentDispatcher().SetTimerFunc(&GetTickCount);
     Blink();
     
-
     if (!bootprotocol.Init())
     {
         bootloader.Exit();

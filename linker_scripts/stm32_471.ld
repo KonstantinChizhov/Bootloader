@@ -62,6 +62,7 @@ SECTIONS
 		. = ALIGN(4);
 	} > FLASH
 
+	
 	/* .ARM.exidx is sorted, so has to go in its own output section.  */
 	__exidx_start = .;
 	.ARM.exidx :
@@ -76,6 +77,16 @@ SECTIONS
 		_etext = .;
 		_sidata = _etext;		/* start of initialized data label */
 	} > FLASH
+
+	.nvm_data :
+	{
+		. = ALIGN(_PageSize);
+		_nvmStart = .;
+		. = . + _PageSize; /* make sure enough space left for NVM section page*/
+		. = ALIGN(_PageSize);
+		_nvmEnd = .;
+	} > FLASH
+
 
 	.data : AT ( _sidata )		/* AT makes the LMA follow on in the binary image */
 	{

@@ -12,9 +12,23 @@ extern unsigned long _edata;  // end initiated data
 extern unsigned long _sbss;   // begin uninitiated data
 extern unsigned long _ebss;   // end uninitiated data
 extern unsigned long _estack; // top of the stack
+extern unsigned long _nvmStart;
+extern unsigned long _nvmEnd;
 
 namespace Bootloader
 {
+
+struct AppEntryPoint
+{
+    bool operator==(const AppEntryPoint &rhs)
+    {
+        return appStackPointer == rhs.appStackPointer && appEntryAddr == rhs.appEntryAddr;
+    }
+    uint32_t version;
+    uint32_t appStackPointer;
+    uint32_t appEntryAddr;
+    uint32_t reserved;
+};
 
 class BootloaderApp
 {
@@ -24,8 +38,9 @@ class BootloaderApp
 public:
     BootloaderApp();
 
+    bool ReplaceAndStoreAppEntryPoint(uint16_t *data);
     void InitBootData();
-    bool WriteFlash(const uint16_t *data, size_t size, uint32_t address);
+    bool WriteFlash(uint16_t *data, uint16_t page, uint16_t size, uint16_t offset);
     bool EraseFlash(uint32_t page);
     bool RunApplication();
     BootData &GetBootData();
