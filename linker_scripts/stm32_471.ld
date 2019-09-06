@@ -3,7 +3,7 @@ ENTRY(Reset_Handler)
 
 _Minimum_Stack_Size = 0x400;
 _PageSize = 2048;
-_BootSize = _PageSize * 8;
+_BootSize = _PageSize * 12;
 
 
 MEMORY

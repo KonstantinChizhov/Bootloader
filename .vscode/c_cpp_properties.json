@@ -17,7 +17,7 @@
                 "_UNICODE",
                 "STM32L471xx"
             ],
-            "compilerPath": "\"C:\\Program Files (x86)\\GNU Tools Arm Embedded\\7 2018-q2-update\\bin\\arm-none-eabi-gcc.exe\"",
+            "compilerPath": "\"C:\\Program Files (x86)\\GNU Tools ARM Embedded\\8 2019-q3-update\\bin\\arm-none-eabi-gcc.exe\"",
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "gcc-x86"

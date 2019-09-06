@@ -48,6 +48,7 @@ bool BootloaderApp::ReplaceAndStoreAppEntryPoint(uint16_t *data)
 
 	ptr[0] = (uint32_t)&_estack;
 	ptr[1] = (uint32_t)&Reset_Handler;
+	return true;
 }
 
 bool BootloaderApp::WriteFlash(uint16_t *data, uint16_t page, uint16_t size, uint16_t offset)
@@ -122,7 +123,7 @@ void BootloaderApp::InitBootData()
 	_bootdata.deviceId[0] = uid[0];
 	_bootdata.deviceId[1] = uid[1];
 	_bootdata.deviceId[2] = uid[2];
-	_bootdata.deviceId[0] = 0;
+	_bootdata.deviceId[3] = 0;
 
 	_bootdata.pageCount = Flash::PageCount();
 	_bootdata.applicationPageCount = BootStartBootPage();

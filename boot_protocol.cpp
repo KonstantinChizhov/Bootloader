@@ -22,8 +22,8 @@ using namespace std::placeholders;
 
 bool BootloaderProtocol::Init()
 {
-    Clock::HsiClock::Enable();
-    BootDeviceClock::SelectClockSource(Clock::UsartClockSrc::Hsi);
+    //Clock::HsiClock::Enable();
+    //BootDeviceClock::SelectClockSource(Clock::UsartClockSrc::Hsi);
 
     rtuTransport.SetStaticBuffers(&rxChunk, &txChunk);
     BootDevice::Init(115200);
@@ -48,17 +48,10 @@ uint16_t BootloaderProtocol::GetPageMapItem(uint16_t index)
 {
     PageProps prop = (PageProps)(index % PageMapEntrySize);
     uint16_t page = index / PageMapEntrySize;
+
     if (page >= Flash::PageCount())
     {
         return 0;
-    }
-    if (prop == PageProps::SizeLo)
-    {
-        return (uint16_t)(Flash::PageSize(page) & 0xffff);
-    }
-    if (prop == PageProps::SizeHi)
-    {
-        return (uint16_t)((Flash::PageSize(page) >> 16) & 0xffff);
     }
     if (prop == PageProps::AddressLo)
     {
@@ -68,7 +61,16 @@ uint16_t BootloaderProtocol::GetPageMapItem(uint16_t index)
     {
         return (uint16_t)((Flash::PageAddress(page) >> 16) & 0xffff);
     }
-    return 0;
+    if (prop == PageProps::SizeLo)
+    {
+        return (uint16_t)(Flash::PageSize(page) & 0xffff);
+    }
+    if (prop == PageProps::SizeHi)
+    {
+        return (uint16_t)((Flash::PageSize(page) >> 16) & 0xffff);
+    }
+  
+    return 0xffff;
 }
 
 ModbusError BootloaderProtocol::ReadInputRegisters(uint16_t start, uint16_t count, DataBuffer &buffer)
