@@ -5,14 +5,15 @@
 
 using namespace Mcucpp;
 using namespace Mcucpp::IO;
+using namespace Mcucpp::Clock;
 
-typedef Mcucpp::LpUsart1 BootDevice;
-typedef Clock::LpUart1Clock BootDeviceClock;
+typedef Usart3 BootDevice;
+typedef Usart3Clock BootDeviceClock;
 
 
-typedef Pb11 TxPin;
-typedef Pb10 RxPin;
-typedef NullPin DePin;
+typedef Pc4 TxPin;
+typedef Pc5 RxPin;
+typedef Pb14 DePin;//Pb1 DePin;
 
 typedef Pb7 Led;
 

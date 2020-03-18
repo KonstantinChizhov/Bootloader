@@ -21,6 +21,28 @@
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "gcc-x86"
+        },
+        {
+            "name": "stm32f407",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "..\\Mcucpp\\mcucpp\\ARM\\Stm32F40x",
+                "..\\Mcucpp\\mcucpp",
+                "..\\Mcucpp\\3rdparty\\include",
+                "..\\Mcucpp\\3rdparty\\CMSIS\\Include",
+                "..\\Mcucpp\\3rdparty\\CMSIS\\Device\\ST\\STM32L4xx\\Include",
+                "..\\Mcucpp\\mcucpp\\ARM\\CortexM4"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "STM32F40_41xxx"
+            ],
+            "compilerPath": "\"C:\\Program Files (x86)\\GNU Tools ARM Embedded\\8 2019-q3-update\\bin\\arm-none-eabi-gcc.exe\"",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-x86"
         }
     ],
     "version": 4
