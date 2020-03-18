@@ -33,11 +33,13 @@ struct AppEntryPoint
 class BootloaderApp
 {
     volatile bool _done = false;
+    volatile bool _connected = false;
     BootData _bootdata;
 
 public:
     BootloaderApp();
-
+    void Reset();
+    void Connected() { _connected = true; }
     bool ReplaceAndStoreAppEntryPoint(uint16_t *data);
     void InitBootData();
     bool WriteFlash(uint16_t *data, uint16_t page, uint16_t size, uint16_t offset);
@@ -51,7 +53,7 @@ public:
     bool IsRegionClear(uint32_t address, size_t size);
     bool FindEntryPoint(uint32_t *sp, uint32_t *entry);
     void SetVectTable(const void *table);
-    bool IsDone() { return _done; }
+    bool IsDone() { return _done && !_connected; }
     void Exit() { _done = true; }
 };
 

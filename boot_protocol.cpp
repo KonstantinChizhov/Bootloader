@@ -69,12 +69,13 @@ uint16_t BootloaderProtocol::GetPageMapItem(uint16_t index)
     {
         return (uint16_t)((Flash::PageSize(page) >> 16) & 0xffff);
     }
-  
+
     return 0xffff;
 }
 
 ModbusError BootloaderProtocol::ReadInputRegisters(uint16_t start, uint16_t count, DataBuffer &buffer)
 {
+    _bootloader.Connected();
     uint16_t end = std::min<uint16_t>(start + count, Flash::PageCount() * PageMapEntrySize);
     for (uint16_t reg = start; reg < end; reg++)
     {
@@ -85,6 +86,7 @@ ModbusError BootloaderProtocol::ReadInputRegisters(uint16_t start, uint16_t coun
 
 ModbusError BootloaderProtocol::ReadHoldingRegisters(uint16_t start, uint16_t count, DataBuffer &buffer)
 {
+    _bootloader.Connected();
     uint16_t bootDataEnd = std::min<uint16_t>(start + count, sizeof(BootData) / 2);
     uint16_t *bootDataPtr = reinterpret_cast<uint16_t *>(&_bootloader.GetBootData());
     for (uint16_t reg = start; reg < bootDataEnd; reg++)
@@ -97,6 +99,7 @@ ModbusError BootloaderProtocol::ReadHoldingRegisters(uint16_t start, uint16_t co
 
 ModbusError BootloaderProtocol::WriteHoldingRegisters(uint16_t start, uint16_t count, DataBuffer &buffer)
 {
+    _bootloader.Connected();
     uint16_t endReg = start + count;
     if ((start >= CommandAddress && start < CommandAddress + CommandParamsSize) || (endReg >= CommandAddress && endReg < CommandAddress + CommandParamsSize))
     {
@@ -134,7 +137,7 @@ ModbusError BootloaderProtocol::WriteCommand(uint16_t start, uint16_t count, Dat
         CommandLayout field = (CommandLayout)reg;
         if (field == CommandLayout::Page)
         {
-            if(value >= _bootloader.BootStartBootPage())
+            if (value >= _bootloader.BootStartBootPage())
             {
                 return ModbusError::IllegalValue;
             }
@@ -142,7 +145,7 @@ ModbusError BootloaderProtocol::WriteCommand(uint16_t start, uint16_t count, Dat
         }
         if (field == CommandLayout::Offset)
         {
-            if(value >= Flash::PageSize(_commandData.page))
+            if (value >= Flash::PageSize(_commandData.page))
             {
                 return ModbusError::IllegalValue;
             }
@@ -150,7 +153,7 @@ ModbusError BootloaderProtocol::WriteCommand(uint16_t start, uint16_t count, Dat
         }
         if (field == CommandLayout::Length)
         {
-            if(value >= Flash::PageSize(_commandData.page) - _commandData.offset)
+            if (value >= Flash::PageSize(_commandData.page) - _commandData.offset)
             {
                 return ModbusError::IllegalValue;
             }
@@ -171,20 +174,22 @@ ModbusError BootloaderProtocol::WriteCommand(uint16_t start, uint16_t count, Dat
 bool BootloaderProtocol::ExecuteCommand(BootCommand command)
 {
     _bootloader.GetBootData().error = BootError::Success;
-    switch(command)
+    switch (command)
     {
-        case BootCommand::PageErase:
-            return _bootloader.EraseFlash(_commandData.page);
-        case BootCommand::PageWrite:
-            return _bootloader.WriteFlash(PageBuffer.data(), _commandData.page, _commandData.length, _commandData.offset);
-        case BootCommand::RunApplication:
-            return _bootloader.RunApplication();
-        case BootCommand::PageRead:
-        case BootCommand::None:
+    case BootCommand::PageErase:
+        return _bootloader.EraseFlash(_commandData.page);
+    case BootCommand::PageWrite:
+        return _bootloader.WriteFlash(PageBuffer.data(), _commandData.page, _commandData.length, _commandData.offset);
+    case BootCommand::RunApplication:
+        return _bootloader.RunApplication();
+    case BootCommand::Reset:
+        _bootloader.Reset();
+    case BootCommand::PageRead:
+    case BootCommand::None:
         break;
-        default:
-            _bootloader.GetBootData().error = BootError::WrongCommand;
-            return false;
+    default:
+        _bootloader.GetBootData().error = BootError::WrongCommand;
+        return false;
     }
     return true;
 }

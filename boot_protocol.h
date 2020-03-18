@@ -27,11 +27,12 @@ enum class CommandLayout :uint16_t
 
 enum class BootCommand : uint16_t
 {
-    None,
-    PageErase,
-    PageWrite,
-    PageRead,
-    RunApplication,
+    None = 0,
+    PageErase = 1,
+    PageWrite = 2,
+    PageRead = 3,
+    RunApplication = 4,
+    Reset = 5,
 };
 
 using Mcucpp::Modbus::ModbusError;

@@ -2,6 +2,8 @@
 ENTRY(Reset_Handler)
 
 _Minimum_Stack_Size = 0x400;
+_PageSize = 1024*128;
+_BootSize = _PageSize * 2;
 
 MEMORY
 {
@@ -14,20 +16,21 @@ PROVIDE ( _estack = ALIGN(ORIGIN(RAM) + LENGTH(RAM) - 8 ,8) );
 
 SECTIONS
 {
-	.isr_vectors :
+	.isr_vectors_orig :
 	{
 		. = ALIGN(4);
+		KEEP(*(.isr_vectors_orig))
+		. = ALIGN(4);
+	} > FLASH
+
+	.isr_vectors (ORIGIN(FLASH) + LENGTH(FLASH) - _BootSize):
+	{
+		. = ALIGN(512);
 		KEEP(*(.isr_vectors))
 		. = ALIGN(4);
 	} > FLASH
 	
-	.metadata_section :
-	{
-		. = ALIGN(8);
-		KEEP(*(.crc_section))
-		. = ALIGN(8);
-	} > FLASH
-
+	
 	.text :
 	{
 		_stext = .;
@@ -56,6 +59,7 @@ SECTIONS
 		. = ALIGN(4);
 	} > FLASH
 
+	
 	/* .ARM.exidx is sorted, so has to go in its own output section.  */
 	__exidx_start = .;
 	.ARM.exidx :
@@ -70,6 +74,16 @@ SECTIONS
 		_etext = .;
 		_sidata = _etext;		/* start of initialized data label */
 	} > FLASH
+
+	.nvm_data :
+	{
+		. = ALIGN(_PageSize);
+		_nvmStart = .;
+		. = . + _PageSize; /* make sure enough space left for NVM section page*/
+		. = ALIGN(_PageSize);
+		_nvmEnd = .;
+	} > FLASH
+
 
 	.data : AT ( _sidata )		/* AT makes the LMA follow on in the binary image */
 	{

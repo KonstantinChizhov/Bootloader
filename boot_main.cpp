@@ -40,7 +40,7 @@ int main()
     DePin::Port::Enable();
 
     Led::SetConfiguration(Led::Port::Out);
-    //Led::Set();
+    Led::Set();
 
     Watchdog::Start(2000);
     bootloader.InitBootData();
@@ -48,14 +48,15 @@ int main()
     SysTickTimer::Init(1);
     SysTickTimer::EnableInterrupt();
     GetCurrentDispatcher().SetTimerFunc(&GetTickCount);
-    Blink();
-    
+
     if (!bootprotocol.Init())
     {
         bootloader.Exit();
     }
 
-    //GetCurrentDispatcher().SetTimer(BootStartTimeout, []() { bootloader.Exit(); });
+    Blink();
+
+    GetCurrentDispatcher().SetTimer(BootStartTimeout, []() { bootloader.Exit(); });
 
     while (!bootloader.IsDone())
     {
@@ -64,6 +65,6 @@ int main()
     }
 
     bootloader.RunApplication();
-    NVIC_SystemReset();
+    bootloader.Reset();
     return 0;
 }

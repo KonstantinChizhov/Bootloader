@@ -21,7 +21,7 @@ linkerScripts = {'stm32f407': r'linker_scripts\stm32_40x.ld',
                  'stm32f103': r'linker_scripts\stm32_103xB.ld',
                  'stm32l471': r'linker_scripts\stm32_471.ld'}
 
-device['linkerScript'] = r'linker_scripts\stm32_471.ld'
+device['linkerScript'] = linkerScripts[deviceName]
 
 env = Environment(DEVICE=device,
                   toolpath=['%s/scons' % MCUCPP_PATH],

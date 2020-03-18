@@ -12,14 +12,15 @@ extern "C" void Reset_Handler();
 
 using namespace Bootloader;
 
-const uint32_t nvmPage = Flash::AddrToPage((void *)_nvmStart);
-const uint32_t nvmPageCount = (_nvmEnd - _nvmStart) / Flash::PageSize(nvmPage);
+const uint32_t nvmPage = Flash::AddrToPage((void *)&_nvmStart);
+const uint32_t nvmPageCount = ((uint8_t*)&_nvmEnd - (uint8_t*)&_nvmStart) / Flash::PageSize(nvmPage);
 Storage::NvmStorage<AppEntryPoint> entryPointStorage(nvmPage, nvmPageCount);
 
 BootloaderApp::BootloaderApp()
 	: _bootdata{
 		  bootSignature : {'R', 'U', 'B', 'I', 'N', ' ', 'B', 'O', 'O', 'T'},
-		  mcuType : {'S', 'T', 'M', '3', '2', 'L', '4', '7', '1'},
+		  mcuType : MCU_NAME,
+
 		  bootVersion : BootVersion,
 		  deviceId : {0, 0, 0, 0},
 		  error : BootError::Success,
@@ -86,7 +87,7 @@ bool BootloaderApp::WriteFlash(uint16_t *data, uint16_t page, uint16_t size, uin
 		return false;
 	}
 
-	if (page == 0)
+	if (page == 0 && offset == 0)
 	{
 		if(!ReplaceAndStoreAppEntryPoint(data))
 		{
@@ -119,7 +120,11 @@ BootData &BootloaderApp::GetBootData()
 
 void BootloaderApp::InitBootData()
 {
+	#if defined(UID_BASE)
 	uint32_t *uid = reinterpret_cast<uint32_t *>(UID_BASE);
+	#else
+	uint32_t *uid = reinterpret_cast<uint32_t *>(0x1FFF7A10);
+	#endif
 	_bootdata.deviceId[0] = uid[0];
 	_bootdata.deviceId[1] = uid[1];
 	_bootdata.deviceId[2] = uid[2];
@@ -207,3 +212,8 @@ bool BootloaderApp::RunApplication()
 	}
 	return false;
 }
+
+ void BootloaderApp::Reset()
+ {
+	  NVIC_SystemReset();
+ }
