@@ -32,8 +32,5 @@
 *.app
 
 /.sconsign.dblite
-/build/Bootloaderstm32l471.elf
-/build/Bootloaderstm32l471.hex
-/build/Bootloaderstm32l471.lss
-/build/Bootloaderstm32l471.map
-/build/Bootloaderstm32l471_flash.log
+/build/
+

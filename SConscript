@@ -2,6 +2,7 @@
 import os
 import sys
 from datetime import date
+import copy
 
 Import('*')
 if not 'MCUCPP_PATH' in globals():
@@ -15,6 +16,8 @@ sys.path.insert(1, Dir(MCUCPP_PATH + '/scons').srcnode().abspath)
 import devices
 
 device = devices.SupportedDevices[deviceName]
+deviceCopy = copy.deepcopy(device)
+
 linkerScripts = {'stm32f407': r'linker_scripts\stm32_40x.ld',
                  'stm32f429':  r'linker_scripts\stm32_40x.ld',
                  'stm32f100': r'linker_scripts\stm32_100xB.ld',
@@ -27,6 +30,10 @@ env = Environment(DEVICE=device,
                   toolpath=['%s/scons' % MCUCPP_PATH],
                   tools=['mcucpp'])
 
+testEnv =  Environment(DEVICE=deviceCopy,
+                  toolpath=['%s/scons' % MCUCPP_PATH],
+                  tools=['mcucpp'])
+
 env['CUSTOM_HEX_PARAMS'] = '--only-section .isr_vectors_orig'
 
 env.Append(CPPDEFINES={
@@ -36,11 +43,12 @@ env.Append(CPPDEFINES={
 
 #env.Append(LINKFLAGS = ["-nostdlib"])
 env.Append(CCFLAGS=["-Os"])
+testEnv.Append(CCFLAGS=["-Os"])
 
 bootTargets = []
 
 
-def BuildBootloader(envBoot, suffix):
+def BuildBootloader(envBoot, testEnv, suffix):
 
     bootloader = envBoot.Object('bootloader%s' % suffix, '#/./bootloader.cpp')
     protocol = envBoot.Object('boot_protocol%s' % suffix, '#/./boot_protocol.cpp')
@@ -53,9 +61,15 @@ def BuildBootloader(envBoot, suffix):
     bootHex = envBoot.Hex(elfBootloader)
     flash = envBoot.Flash(bootHex)
     #BootSize = envBoot.Size(elfBootloader, 'BootSize')
-    bootTargets.extend([elfBootloader, bootLss, bootHex, flash])
+    testAppObj = testEnv.Object('test_app_%s' % suffix, '#/./test_app.cpp')
+    elfTestApp = testEnv.Program('test_app_%s' % suffix, testAppObj)
+    testAppLss = testEnv.Disassembly(elfTestApp)
+    testAppHex = testEnv.Hex(elfTestApp)
+    # flash = testEnv.Flash(elfTestApp)
+
+    bootTargets.extend([elfBootloader, bootLss, bootHex, flash, elfTestApp, testAppLss, testAppHex])
 
 
-BuildBootloader(env, deviceName)
+BuildBootloader(env, testEnv, deviceName)
 
 Alias('Bootloader', bootTargets)
