@@ -24,9 +24,16 @@ typedef Usart3Clock BootDeviceClock;
 
 typedef Pc4 TxPin;
 typedef Pc5 RxPin;
-typedef Pb1 DePin;
+//typedef Pb1 DePin;
+typedef Pb14 DePin;
+
 typedef Pb9 Led;
 #define MCU_NAME {'S', 'T', 'M', '3', '2', 'L', '4', '7', '1'}
+
+typedef Usart2 DebugDevice;
+typedef Usart2Sel DebugDeviceClock;
+typedef Pa2 DebugTxPin;
+typedef Pa3 DebugRxPin;
 
 #endif
 constexpr uint8_t BootModbusAddr = 1;
@@ -44,3 +51,9 @@ constexpr uint32_t EntryPointMarker2 = 0x5A5A5A5A;
 
 constexpr uint32_t BootStartTimeout = 2 * 1000;
 
+#if defined(_DEBUG) && _DEBUG
+#include <tiny_ostream.h>
+#include <tiny_iomanip.h>
+extern Mcucpp::basic_ostream<DebugDevice> cout;
+
+#endif

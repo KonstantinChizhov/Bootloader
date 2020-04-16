@@ -12,7 +12,7 @@
                 "..\\Mcucpp\\mcucpp\\ARM\\CortexM4"
             ],
             "defines": [
-                "_DEBUG",
+                "DEBUG",
                 "UNICODE",
                 "_UNICODE",
                 "STM32L471xx"
@@ -34,7 +34,7 @@
                 "..\\Mcucpp\\mcucpp\\ARM\\CortexM4"
             ],
             "defines": [
-                "_DEBUG",
+                "DEBUG",
                 "UNICODE",
                 "_UNICODE",
                 "STM32F40_41xxx"

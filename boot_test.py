@@ -31,9 +31,13 @@ retries = 3
 def WriteRegs(clinet, addr, values):
     rr = None
     for attempt in range(0, retries):
+        if len(values) < 20:
+            print("Write: %s" % str(values))
         rr = client.write_registers(addr, values, unit=modAddr)
-        if not isinstance(rr, ModbusException):
-            return rr
+        if isinstance(rr, ModbusException):
+            print("Error: %s" % str(rr))
+            continue
+        return rr
     raise rr
 
 
@@ -78,19 +82,44 @@ def GetBootVersionCount(client):
     return rr.registers[0]
 
 
+def CheckError(client):
+    errorMessage = ["Success",
+        "Argument Error",
+        "Not Flash Address",
+        "Cross Page Bounds",
+        "Length Not Aligned",
+        "Page Is Protected",
+        "Addr Not Aligned",
+        "Region Is Not Clear",
+        "Writing Error",
+        "Wrong Page Number",
+        "Erase Error",
+        "Error Storing Entry Point",
+        "Entry Point Not Found",
+        "Wrong Command"]
+
+    rr = ReadHoldingRegs(client, 42, 1)
+    errorCode = rr.registers[0]
+    if errorCode != 0:
+        if errorCode < len(errorMessage):
+            raise Exception("Error: %u - %s" % (errorCode, errorMessage[errorCode]))
+        else:
+            raise Exception("Error: %u - Unknown" % errorCode)
+
+
 def WritePage(client, data, page, offset):
     modbusData = []
     for i in range(0, len(data), 2):
         modbusData.append(data[i] + (data[i + 1] << 8))
-
     rr = WriteRegs(client, PageBufferAddr, modbusData)
     data = [page, offset, len(data), CommandPageWrite]
     rr = WriteRegs(client, CommandAddress, data)
-
+    CheckError(client)
 
 def ErasePage(client, page):
     data = [page, 0, 0, CommandPageErase]
     rr = WriteRegs(client, CommandAddress, data)
+    CheckError(client)
 
 
 def Reset(client):
@@ -98,32 +127,6 @@ def Reset(client):
     rr = client.write_registers(CommandAddress, data, unit=modAddr)
     rr = client.write_registers(CommandAddress, data, unit=modAddr)
     # ignore errors here, bootlodaer will not responce anyway
-
-
-def CheckError(client):
-	errorMessage = ["Success",
-    "Argument Error,
-    "Not Flash Address",
-    "Cross Page Bounds",
-    "Length Not Aligned",
-    "Page Is Protected",
-    "Addr Not Aligned",
-    "Region Is Not Clear",
-    "Writing Error",
-    "Wrong Page Number",
-    "Erase Error",
-    "Error Storing Entry Point",
-    "Entry Point Not Found",
-    "Wrong Command"]
-
-    rr = ReadHoldingRegs(client, 42, 1)
-    errorCode = rr.registers[0]
-    if errorCode != 0:
-		if errorCode < len(errorMessage):
-        	raise Exception("Error: %u - %s" % (errorCode, errorMessage[errorCode]))
-		else:
-			raise Exception("Error: %u - Unknown" % errorCode)
-    return rr.registers[0], rr.registers[1]
 
 
 def GetPageCount(client):
@@ -157,7 +160,7 @@ def GetPageAddress(client, page):
 
 
 def BootInit():
-    client = ModbusClient(method='rtu', port='COM28',
+    client = ModbusClient(method='rtu', port='COM4',
                           stopbits=1, timeout=1, baudrate=115200)
     client.connect()
     return client
@@ -166,15 +169,14 @@ def BootInit():
 def BootPrettyWritePage(client, data, page, offset):
     print('Writing page #%u (%u bytes)\t' % (page, len(data)))
 
-    error = ErasePage(client, page)
-    if error != 0:
-        raise Exception('Error erasing page. ErrCode = %s' % error)
+    ErasePage(client, page)
+    
     chunkSize = PageBufferSize
     wordsWritten = 0
     for chunk in range(offset, offset + len(data), chunkSize):
         chunkData = data[chunk:chunk+chunkSize]
-        print('Writing chunk #%u (%u bytes)\t' % (chunk, len(chunkData)))
-        error = WritePage(client, chunkData, page, chunk)
+        print('Writing chunk #%x (%u bytes)\t' % (chunk, len(chunkData)))
+        WritePage(client, chunkData, page, chunk)
         wordsWritten += chunkSize
 
     print('OK')

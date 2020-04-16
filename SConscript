@@ -41,6 +41,8 @@ env.Append(CPPDEFINES={
     'BUILD_MONTH': date.today().month,
     'BUILD_DAY': date.today().day})
 
+env.Append(CPPDEFINES={'_DEBUG': 1})
+
 #env.Append(LINKFLAGS = ["-nostdlib"])
 env.Append(CCFLAGS=["-Os"])
 testEnv.Append(CCFLAGS=["-Os"])
@@ -66,10 +68,10 @@ def BuildBootloader(envBoot, testEnv, suffix):
     testAppLss = testEnv.Disassembly(elfTestApp)
     testAppHex = testEnv.Hex(elfTestApp)
     
-    #flash = envBoot.Flash(bootHex)
+    flash = envBoot.Flash(bootHex)
     # flash = testEnv.Flash(elfTestApp)
 
-    bootTargets.extend([elfBootloader, bootLss, bootHex, elfTestApp, testAppLss, testAppHex])
+    bootTargets.extend([elfBootloader, bootLss, bootHex, elfTestApp, testAppLss, testAppHex, flash])
 
 
 BuildBootloader(env, testEnv, deviceName)

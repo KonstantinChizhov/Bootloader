@@ -6,11 +6,15 @@
 #include "bootloader.h"
 #include "boot_protocol.h"
 
+
 using namespace Bootloader;
 
 BootloaderApp bootloader;
 BootloaderProtocol bootprotocol{bootloader};
 
+#if defined(_DEBUG) && _DEBUG
+Mcucpp::basic_ostream<DebugDevice> cout;
+#endif
 extern "C" void Reset_Handler();
 
 __attribute__((section(".isr_vectors_orig"), used)) void (*const g_pfnVectors_orig[])(void) =
@@ -39,6 +43,14 @@ int main()
     RxPin::Port::Enable();
     DePin::Port::Enable();
 
+#if defined(_DEBUG) && _DEBUG
+    
+    Clock::HsiClock::Enable();
+    DebugDeviceClock::Set(UsartClockSrc::Hsi);
+	DebugDevice::Init(115200);
+	DebugDevice::SelectTxRxPins<DebugTxPin, DebugRxPin>();
+    cout << "Bootloader started\r\n";
+#endif
     Led::SetConfiguration(Led::Port::Out);
     Led::Set();
 
@@ -51,6 +63,9 @@ int main()
 
     if (!bootprotocol.Init())
     {
+#if defined(_DEBUG) && _DEBUG
+        cout << "Init Failed\r\n";
+#endif
         bootloader.Exit();
     }
 
@@ -63,7 +78,9 @@ int main()
         GetCurrentDispatcher().Poll();
         Watchdog::Reset();
     }
-
+#if defined(_DEBUG) && _DEBUG
+    cout << "Try running app\r\n";
+#endif
     bootloader.RunApplication();
     bootloader.Reset();
     return 0;

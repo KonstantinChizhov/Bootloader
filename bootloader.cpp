@@ -54,6 +54,10 @@ bool BootloaderApp::ReplaceAndStoreAppEntryPoint(uint16_t *data)
 
 bool BootloaderApp::WriteFlash(uint16_t *data, uint16_t page, uint16_t size, uint16_t offset)
 {
+	
+#if defined(_DEBUG) && _DEBUG
+    cout << "Write: " << hex << setw(8) << page << setw(8) << size << setw(8) << offset << "\r\n" ;
+#endif
 	if (size < 8)
 	{
 		_bootdata.error = BootError::ArgumentError;
