@@ -12,14 +12,15 @@
             "type": "cortex-debug",
             "servertype": "openocd",
             "device": "STM32L471RG",
+            
             "configFiles": [
                 "${workspaceRoot}\\..\\Tools\\OpenOCD\\scripts\\board\\stm32l4discovery.cfg",
                 "${workspaceRoot}\\..\\Tools\\OpenOCD\\scripts\\interface\\stlink-v2.cfg"
             ],
             "preLaunchCommands": ["mon reset halt"],
             "windows": {
-                //"armToolchainPath": "C:\\Program Files (x86)\\GNU Tools ARM Embedded\\7 2018-q2-update\\bin"    
-                "armToolchainPath": "C:\\Program Files (x86)\\GNU Tools Arm Embedded\\9 2019-q4-major\\bin"        
+                "armToolchainPath": "C:\\Program Files (x86)\\GNU Tools ARM Embedded\\8 2019-q3-update\\bin"    
+                //"armToolchainPath": "C:\\Program Files (x86)\\GNU Tools Arm Embedded\\9 2019-q4-major\\bin"        
             },
             "showDevDebugOutput": true
         },

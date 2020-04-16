@@ -59,15 +59,17 @@ def BuildBootloader(envBoot, testEnv, suffix):
         'Bootloader%s' % suffix, bootloader_objects)
     bootLss = envBoot.Disassembly(elfBootloader)
     bootHex = envBoot.Hex(elfBootloader)
-    flash = envBoot.Flash(bootHex)
+
     #BootSize = envBoot.Size(elfBootloader, 'BootSize')
     testAppObj = testEnv.Object('test_app_%s' % suffix, '#/./test_app.cpp')
     elfTestApp = testEnv.Program('test_app_%s' % suffix, testAppObj)
     testAppLss = testEnv.Disassembly(elfTestApp)
     testAppHex = testEnv.Hex(elfTestApp)
+    
+    #flash = envBoot.Flash(bootHex)
     # flash = testEnv.Flash(elfTestApp)
 
-    bootTargets.extend([elfBootloader, bootLss, bootHex, flash, elfTestApp, testAppLss, testAppHex])
+    bootTargets.extend([elfBootloader, bootLss, bootHex, elfTestApp, testAppLss, testAppHex])
 
 
 BuildBootloader(env, testEnv, deviceName)

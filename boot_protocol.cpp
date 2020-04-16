@@ -22,8 +22,8 @@ using namespace std::placeholders;
 
 bool BootloaderProtocol::Init()
 {
-    //Clock::HsiClock::Enable();
-    //BootDeviceClock::SelectClockSource(Clock::UsartClockSrc::Hsi);
+    Clock::HsiClock::Enable();
+    BootDeviceClock::SelectClockSource(Clock::UsartClockSrc::Hsi);
 
     rtuTransport.SetStaticBuffers(&rxChunk, &txChunk);
     BootDevice::Init(115200);
@@ -105,14 +105,14 @@ ModbusError BootloaderProtocol::WriteHoldingRegisters(uint16_t start, uint16_t c
     {
         uint16_t startInRange = (uint16_t)std::max<int>(start - CommandAddress, 0);
         uint16_t countInRange = std::min<uint16_t>(count, CommandParamsSize - startInRange);
-        WriteCommand(startInRange, countInRange, buffer);
+        return WriteCommand(startInRange, countInRange, buffer);
     }
 
     if ((start >= PageBufferAddr && start < PageBufferAddr + PageBuffer.size()) || (endReg >= PageBufferAddr && endReg < PageBufferAddr + PageBuffer.size()))
     {
         uint16_t startInRange = (uint16_t)std::max<int>(start - PageBufferAddr, 0);
         uint16_t countInRange = std::min<uint16_t>(count, PageBuffer.size() - startInRange);
-        WriteBuffer(startInRange, countInRange, buffer);
+        return WriteBuffer(startInRange, countInRange, buffer);
     }
 
     return ModbusError::NoError;

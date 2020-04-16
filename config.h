@@ -2,7 +2,6 @@
 
 #include <usart.h>
 #include <iopins.h>
-
 using namespace Mcucpp;
 using namespace Mcucpp::IO;
 using namespace Mcucpp::Clock;
@@ -18,15 +17,15 @@ typedef NullPin DePin;
 typedef Pd13 Led;
 #define MCU_NAME {'S', 'T', 'M', '3', '2', 'F', '4', '0', '7'}
 
-#elif defined(stm32l471)
+#elif defined(STM32L471xx)
 
 typedef Usart3 BootDevice;
 typedef Usart3Clock BootDeviceClock;
 
 typedef Pc4 TxPin;
 typedef Pc5 RxPin;
-typedef Pb14 DePin;//Pb1 DePin;
-typedef Pb7 Led;
+typedef Pb1 DePin;
+typedef Pb9 Led;
 #define MCU_NAME {'S', 'T', 'M', '3', '2', 'L', '4', '7', '1'}
 
 #endif
