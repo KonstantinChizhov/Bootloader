@@ -7,6 +7,7 @@
 #include <array>
 #include "bootloader.h"
 #include "boot_protocol.h"
+#include <cstring>
 
 extern "C" void Reset_Handler();
 
@@ -87,6 +88,12 @@ bool BootloaderApp::WriteFlash(uint16_t *data, uint16_t page, uint16_t size, uin
 	uint32_t address = Flash::PageAddress(page) + offset;
 	if (!IsRegionClear(address, size))
 	{
+		if(std::memcmp((void*)address, data, size) == 0)
+		{
+			// re-trying to write same block
+			_bootdata.error = BootError::Success;
+			return true;
+		}
 		_bootdata.error = BootError::RegionIsNotClear;
 		return false;
 	}

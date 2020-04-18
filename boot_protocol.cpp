@@ -26,7 +26,7 @@ bool BootloaderProtocol::Init()
     BootDeviceClock::SelectClockSource(Clock::UsartClockSrc::Hsi);
 
     rtuTransport.SetStaticBuffers(&rxChunk, &txChunk);
-    BootDevice::Init(115200);
+    BootDevice::Init(115200, BootDevice::Default | BootDevice::TwoStopBits);
     BootDevice::SelectTxRxPins<TxPin, RxPin>();
     BootDevice::SetRxTimeout(20);
 
@@ -101,6 +101,17 @@ ModbusError BootloaderProtocol::WriteHoldingRegisters(uint16_t start, uint16_t c
 {
     _bootloader.Connected();
     uint16_t endReg = start + count;
+#if defined(_DEBUG) && _DEBUG
+    cout << setw(5) << start << setw(5) << count;
+    if(count < 20)
+    {
+        cout << "{";
+        for(auto d : buffer)
+            cout << setw(5) << d;
+        cout << "}";
+    }
+    cout << "\r\n";
+#endif
     if ((start >= CommandAddress && start < CommandAddress + CommandParamsSize) || (endReg >= CommandAddress && endReg < CommandAddress + CommandParamsSize))
     {
         uint16_t startInRange = (uint16_t)std::max<int>(start - CommandAddress, 0);
@@ -115,7 +126,7 @@ ModbusError BootloaderProtocol::WriteHoldingRegisters(uint16_t start, uint16_t c
         return WriteBuffer(startInRange, countInRange, buffer);
     }
 
-    return ModbusError::NoError;
+    return ModbusError::IllegalAddress;
 }
 
 ModbusError BootloaderProtocol::WriteBuffer(uint16_t start, uint16_t count, DataBuffer &buffer)
@@ -153,7 +164,7 @@ ModbusError BootloaderProtocol::WriteCommand(uint16_t start, uint16_t count, Dat
         }
         if (field == CommandLayout::Length)
         {
-            if (value >= Flash::PageSize(_commandData.page) - _commandData.offset)
+            if (value > Flash::PageSize(_commandData.page) - _commandData.offset)
             {
                 return ModbusError::IllegalValue;
             }

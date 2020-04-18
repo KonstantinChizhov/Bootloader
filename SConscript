@@ -41,7 +41,7 @@ env.Append(CPPDEFINES={
     'BUILD_MONTH': date.today().month,
     'BUILD_DAY': date.today().day})
 
-env.Append(CPPDEFINES={'_DEBUG': 1})
+env.Append(CPPDEFINES={'_DEBUG': 0})
 
 #env.Append(LINKFLAGS = ["-nostdlib"])
 env.Append(CCFLAGS=["-Os"])

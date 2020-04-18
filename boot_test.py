@@ -31,8 +31,8 @@ retries = 3
 def WriteRegs(clinet, addr, values):
     rr = None
     for attempt in range(0, retries):
-        if len(values) < 20:
-            print("Write: %s" % str(values))
+        #if len(values) < 20:
+        #    print("Write: %s" % str(values))
         rr = client.write_registers(addr, values, unit=modAddr)
         if isinstance(rr, ModbusException):
             print("Error: %s" % str(rr))
@@ -160,8 +160,8 @@ def GetPageAddress(client, page):
 
 
 def BootInit():
-    client = ModbusClient(method='rtu', port='COM4',
-                          stopbits=1, timeout=1, baudrate=115200)
+    client = ModbusClient(method='rtu', port='COM8',
+                          stopbits=2, timeout=1, baudrate=115200)
     client.connect()
     return client
 
