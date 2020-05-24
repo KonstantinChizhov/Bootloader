@@ -33,6 +33,7 @@ enum class BootCommand : uint16_t
     PageRead = 3,
     RunApplication = 4,
     Reset = 5,
+    Activate = 0x5555,
 };
 
 using Mcucpp::Modbus::ModbusError;

@@ -75,7 +75,6 @@ uint16_t BootloaderProtocol::GetPageMapItem(uint16_t index)
 
 ModbusError BootloaderProtocol::ReadInputRegisters(uint16_t start, uint16_t count, DataBuffer &buffer)
 {
-    _bootloader.Connected();
     uint16_t end = std::min<uint16_t>(start + count, Flash::PageCount() * PageMapEntrySize);
     for (uint16_t reg = start; reg < end; reg++)
     {
@@ -99,14 +98,13 @@ ModbusError BootloaderProtocol::ReadHoldingRegisters(uint16_t start, uint16_t co
 
 ModbusError BootloaderProtocol::WriteHoldingRegisters(uint16_t start, uint16_t count, DataBuffer &buffer)
 {
-    _bootloader.Connected();
     uint16_t endReg = start + count;
 #if defined(_DEBUG) && _DEBUG
     cout << setw(5) << start << setw(5) << count;
-    if(count < 20)
+    if (count < 20)
     {
         cout << "{";
-        for(auto d : buffer)
+        for (auto d : buffer)
             cout << setw(5) << d;
         cout << "}";
     }
@@ -195,6 +193,8 @@ bool BootloaderProtocol::ExecuteCommand(BootCommand command)
         return _bootloader.RunApplication();
     case BootCommand::Reset:
         _bootloader.Reset();
+    case BootCommand::Activate:
+        _bootloader.Connected();
     case BootCommand::PageRead:
     case BootCommand::None:
         break;

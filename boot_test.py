@@ -23,6 +23,7 @@ CommandPageWrite = 2
 CommandPageRead = 3
 CommandRunApplication = 4
 CommandReset = 5
+ActivateCommand = 0x5555
 
 modAddr = 1
 retries = 3
@@ -165,6 +166,9 @@ def BootInit():
     client.connect()
     return client
 
+def Connect(client):
+    data = [ActivateCommand]
+    rr = WriteRegs(client, CommandAddress, data)
 
 def BootPrettyWritePage(client, data, page, offset):
     print('Writing page #%u (%u bytes)\t' % (page, len(data)))
@@ -198,6 +202,7 @@ print('Start address: 0x%08x' % ih.minaddr())
 print('End address: 0x%08x' % ih.maxaddr())
 print('Total code size: %u bytes' % (len(hexItems)-1))
 client = BootInit()
+Connect(client)
 
 print('Device name: %s' % GetDeviceName(client))
 print('CPU name: %s' % GetMcuName(client))
