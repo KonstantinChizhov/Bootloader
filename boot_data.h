@@ -19,7 +19,8 @@ enum class BootError : uint16_t
     EraseError,
     ErrorStoringEntryPoint,
     EntryPointNotFound,
-    WrongCommand
+    WrongCommand,
+    FailedToDercrypt,
 };
 
 struct BootData

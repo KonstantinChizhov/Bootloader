@@ -8,13 +8,14 @@
 #include "bootloader.h"
 #include "boot_protocol.h"
 #include <cstring>
+#include "Encryption.h"
 
 extern "C" void Reset_Handler();
 
 using namespace Bootloader;
 
 const uint32_t nvmPage = Flash::AddrToPage((void *)&_nvmStart);
-const uint32_t nvmPageCount = ((uint8_t*)&_nvmEnd - (uint8_t*)&_nvmStart) / Flash::PageSize(nvmPage);
+const uint32_t nvmPageCount = ((uint8_t *)&_nvmEnd - (uint8_t *)&_nvmStart) / Flash::PageSize(nvmPage);
 Storage::NvmStorage<AppEntryPoint> entryPointStorage(nvmPage, nvmPageCount);
 
 BootloaderApp::BootloaderApp()
@@ -55,9 +56,9 @@ bool BootloaderApp::ReplaceAndStoreAppEntryPoint(uint16_t *data)
 
 bool BootloaderApp::WriteFlash(uint16_t *data, uint16_t page, uint16_t size, uint16_t offset)
 {
-	
+
 #if defined(_DEBUG) && _DEBUG
-    cout << "Write: " << hex << setw(8) << page << setw(8) << size << setw(8) << offset << "\r\n" ;
+	cout << "Write: " << hex << setw(8) << page << setw(8) << size << setw(8) << offset << "\r\n";
 #endif
 	if (size < 8)
 	{
@@ -85,10 +86,18 @@ bool BootloaderApp::WriteFlash(uint16_t *data, uint16_t page, uint16_t size, uin
 		_bootdata.error = BootError::PageIsProtected;
 		return false;
 	}
+
+	size_t outputSize = 0;
+	if (!DecryptPage((const uint8_t *)data, size, (uint8_t *)_pageData, &outputSize))
+	{
+		_bootdata.error = BootError::FailedToDercrypt;
+		return false;
+	}
+
 	uint32_t address = Flash::PageAddress(page) + offset;
 	if (!IsRegionClear(address, size))
 	{
-		if(std::memcmp((void*)address, data, size) == 0)
+		if (std::memcmp((void *)address, _pageData, outputSize) == 0)
 		{
 			// re-trying to write same block
 			_bootdata.error = BootError::Success;
@@ -100,13 +109,13 @@ bool BootloaderApp::WriteFlash(uint16_t *data, uint16_t page, uint16_t size, uin
 
 	if (page == 0 && offset == 0)
 	{
-		if(!ReplaceAndStoreAppEntryPoint(data))
+		if (!ReplaceAndStoreAppEntryPoint(_pageData))
 		{
 			return false;
 		}
 	}
 
-	if (!Flash::WritePage(page, data, size, offset))
+	if (!Flash::WritePage(page, _pageData, outputSize, offset))
 	{
 		_bootdata.error = BootError::WritingError;
 		return false;
@@ -131,11 +140,11 @@ BootData &BootloaderApp::GetBootData()
 
 void BootloaderApp::InitBootData()
 {
-	#if defined(UID_BASE)
+#if defined(UID_BASE)
 	uint32_t *uid = reinterpret_cast<uint32_t *>(UID_BASE);
-	#else
+#else
 	uint32_t *uid = reinterpret_cast<uint32_t *>(0x1FFF7A10);
-	#endif
+#endif
 	_bootdata.deviceId[0] = uid[0];
 	_bootdata.deviceId[1] = uid[1];
 	_bootdata.deviceId[2] = uid[2];
@@ -185,7 +194,7 @@ bool BootloaderApp::IsRegionClear(uint32_t address, size_t size)
 bool BootloaderApp::FindEntryPoint(uint32_t *sp, uint32_t *entry)
 {
 	AppEntryPoint entryPoint;
-	if(!entryPointStorage.Read(entryPoint))
+	if (!entryPointStorage.Read(entryPoint))
 	{
 		_bootdata.error = BootError::EntryPointNotFound;
 		return false;
@@ -224,7 +233,8 @@ bool BootloaderApp::RunApplication()
 	return false;
 }
 
- void BootloaderApp::Reset()
- {
-	  NVIC_SystemReset();
- }
+void BootloaderApp::Reset()
+{
+	NVIC_SystemReset();
+}
+

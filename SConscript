@@ -43,6 +43,8 @@ env.Append(CPPDEFINES={
 
 env.Append(CPPDEFINES={'_DEBUG': 0})
 
+env.Append(CPPPATH=['#/tiny-AES-c'])
+
 #env.Append(LINKFLAGS = ["-nostdlib"])
 env.Append(CCFLAGS=["-Os"])
 testEnv.Append(CCFLAGS=["-Os"])
@@ -55,8 +57,10 @@ def BuildBootloader(envBoot, testEnv, suffix):
     bootloader = envBoot.Object('bootloader%s' % suffix, '#/./bootloader.cpp')
     protocol = envBoot.Object('boot_protocol%s' % suffix, '#/./boot_protocol.cpp')
     main = envBoot.Object('boot_main%s' % suffix, '#/./boot_main.cpp')
+    crypt = envBoot.Object('boot_crypt%s' % suffix, '#/./Encryption.cpp')
+    aes = envBoot.Object('boot_aes%s' % suffix, '#/./tiny-AES-c/aes.c')
 
-    bootloader_objects = [bootloader, protocol, main]
+    bootloader_objects = [bootloader, protocol, main, crypt, aes]
     elfBootloader = envBoot.Program(
         'Bootloader%s' % suffix, bootloader_objects)
     bootLss = envBoot.Disassembly(elfBootloader)

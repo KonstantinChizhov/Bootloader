@@ -4,6 +4,7 @@
             "name": "Stm32L4x1",
             "includePath": [
                 "${workspaceFolder}/**",
+                "${workspaceFolder}\\tiny-AES-c",
                 "..\\Mcucpp\\mcucpp\\ARM\\Stm32L4x1",
                 "..\\Mcucpp\\mcucpp",
                 "..\\Mcucpp\\3rdparty\\include",
@@ -26,6 +27,7 @@
             "name": "stm32f407",
             "includePath": [
                 "${workspaceFolder}/**",
+                "${workspaceFolder}\\tiny-AES-c",
                 "..\\Mcucpp\\mcucpp\\ARM\\Stm32F40x",
                 "..\\Mcucpp\\mcucpp",
                 "..\\Mcucpp\\3rdparty\\include",

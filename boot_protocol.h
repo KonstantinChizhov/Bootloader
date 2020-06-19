@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "bootloader.h"
 #include <modbus.h>
-#include "config.h"
+#include "boot_config.h"
 
 namespace Bootloader
 {

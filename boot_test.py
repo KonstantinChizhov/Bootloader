@@ -4,6 +4,11 @@ from intelhex import IntelHex
 import time
 from pymodbus.client.sync import ModbusSerialClient as ModbusClient
 from pymodbus.exceptions import ModbusException
+from Crypto.Cipher import AES
+import binascii
+
+key = binascii.unhexlify('PUT-YOUR-KEY-HERE')
+
 
 modbusAddr = 1
 PageBufferSize = 64
@@ -97,7 +102,8 @@ def CheckError(client):
         "Erase Error",
         "Error Storing Entry Point",
         "Entry Point Not Found",
-        "Wrong Command"]
+        "Wrong Command",
+        "Failed to decrypt"]
 
     rr = ReadHoldingRegs(client, 42, 1)
     errorCode = rr.registers[0]
@@ -109,12 +115,17 @@ def CheckError(client):
 
 
 def WritePage(client, data, page, offset):
+    encryptor = AES.new(key, AES.MODE_ECB)
+    if len(data) % 16 != 0:
+        padding = [0] *  (16 - len(data) % 16)
+        data = data + padding
+    encData = encryptor.encrypt(bytes(data))
     modbusData = []
-    for i in range(0, len(data), 2):
-        modbusData.append(data[i] + (data[i + 1] << 8))
+    for i in range(0, len(encData), 2):
+        modbusData.append(encData[i] + (encData[i + 1] << 8))
     rr = WriteRegs(client, PageBufferAddr, modbusData)
-    data = [page, offset, len(data), CommandPageWrite]
-    rr = WriteRegs(client, CommandAddress, data)
+    cmdData = [page, offset, len(encData), CommandPageWrite]
+    rr = WriteRegs(client, CommandAddress, cmdData)
     CheckError(client)
 
 def ErasePage(client, page):
@@ -161,7 +172,7 @@ def GetPageAddress(client, page):
 
 
 def BootInit():
-    client = ModbusClient(method='rtu', port='COM8',
+    client = ModbusClient(method='rtu', port='COM3',
                           stopbits=2, timeout=1, baudrate=115200)
     client.connect()
     return client
