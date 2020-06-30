@@ -71,11 +71,12 @@ def BuildBootloader(envBoot, testEnv, suffix):
     elfTestApp = testEnv.Program('test_app_%s' % suffix, testAppObj)
     testAppLss = testEnv.Disassembly(elfTestApp)
     testAppHex = testEnv.Hex(elfTestApp)
-    
+
     flash = envBoot.Flash(bootHex)
+    protect = envBoot.Protect(bootHex)
     # flash = testEnv.Flash(elfTestApp)
 
-    bootTargets.extend([elfBootloader, bootLss, bootHex, elfTestApp, testAppLss, testAppHex, flash])
+    bootTargets.extend([elfBootloader, bootLss, bootHex, elfTestApp, testAppLss, testAppHex, flash, protect])
 
 
 BuildBootloader(env, testEnv, deviceName)
