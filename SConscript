@@ -3,6 +3,7 @@ import os
 import sys
 from datetime import date
 import copy
+import binascii
 
 Import('*')
 if not 'MCUCPP_PATH' in globals():
@@ -10,6 +11,13 @@ if not 'MCUCPP_PATH' in globals():
 
 if 'device' in ARGUMENTS:
     deviceName = ARGUMENTS['device']
+
+if 'key' in ARGUMENTS:
+    key = binascii.unhexlify(ARGUMENTS['key'])
+    keyStr = ', '.join(['0x%x' % b for b in key ])
+    print (keyStr)
+else:
+    raise Exception('No AES key was provided in command line')
 
 sys.path.insert(1, Dir(MCUCPP_PATH + '/scons').srcnode().abspath)
 
@@ -39,7 +47,9 @@ env['CUSTOM_HEX_PARAMS'] = '--only-section .isr_vectors_orig'
 env.Append(CPPDEFINES={
     'BUILD_YEAR': date.today().year,
     'BUILD_MONTH': date.today().month,
-    'BUILD_DAY': date.today().day})
+    'BUILD_DAY': date.today().day,
+    'AES_KEY' : keyStr},
+    )
 
 env.Append(CPPDEFINES={'_DEBUG': 0})
 

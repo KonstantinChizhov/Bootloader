@@ -7,7 +7,7 @@ from pymodbus.exceptions import ModbusException
 from Crypto.Cipher import AES
 import binascii
 
-key = binascii.unhexlify('PUT-YOUR-KEY-HERE')
+key = None
 
 
 modbusAddr = 1
@@ -197,10 +197,12 @@ def BootPrettyWritePage(client, data, page, offset):
     print('OK')
 
 
-if len(sys.argv) <= 1:
-    raise Exception('Parameter expected.')
+if len(sys.argv) <= 2:
+    raise Exception('Parameters expected: application.hex "AES-KEY"')
 
 firmwareFile = sys.argv[1]
+key = binascii.unhexlify(sys.argv[2])
+
 print('Reading target file: "%s"' % firmwareFile)
 if os.path.isfile(firmwareFile):
     ih = IntelHex(firmwareFile)

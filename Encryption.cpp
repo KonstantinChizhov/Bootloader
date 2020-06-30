@@ -6,7 +6,7 @@
 namespace Bootloader
 {
 
-    static const constexpr uint8_t Key[] = { PUT-YOUR-KEY-HERE};
+    static const constexpr uint8_t Key[] = { AES_KEY };
 
     bool DecryptPage(const uint8_t *input, size_t inputSize, uint8_t *output, size_t *outputSize)
     {
