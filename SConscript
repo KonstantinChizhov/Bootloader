@@ -23,7 +23,7 @@ sys.path.insert(1, Dir(MCUCPP_PATH + '/scons').srcnode().abspath)
 
 import devices
 
-device = devices.SupportedDevices[deviceName]
+device = copy.deepcopy(devices.SupportedDevices[deviceName])
 deviceCopy = copy.deepcopy(device)
 
 linkerScripts = {'stm32f407': r'linker_scripts\stm32_40x.ld',
@@ -53,7 +53,7 @@ env.Append(CPPDEFINES={
 
 env.Append(CPPDEFINES={'_DEBUG': 0})
 
-env.Append(CPPPATH=['#/tiny-AES-c'])
+env.Append(CPPPATH=['./tiny-AES-c'])
 
 #env.Append(LINKFLAGS = ["-nostdlib"])
 env.Append(CCFLAGS=["-Os"])
@@ -64,11 +64,11 @@ bootTargets = []
 
 def BuildBootloader(envBoot, testEnv, suffix):
 
-    bootloader = envBoot.Object('bootloader%s' % suffix, '#/./bootloader.cpp')
-    protocol = envBoot.Object('boot_protocol%s' % suffix, '#/./boot_protocol.cpp')
-    main = envBoot.Object('boot_main%s' % suffix, '#/./boot_main.cpp')
-    crypt = envBoot.Object('boot_crypt%s' % suffix, '#/./Encryption.cpp')
-    aes = envBoot.Object('boot_aes%s' % suffix, '#/./tiny-AES-c/aes.c')
+    bootloader = envBoot.Object('bootloader%s' % suffix, './bootloader.cpp')
+    protocol = envBoot.Object('boot_protocol%s' % suffix, './boot_protocol.cpp')
+    main = envBoot.Object('boot_main%s' % suffix, './boot_main.cpp')
+    crypt = envBoot.Object('boot_crypt%s' % suffix, './Encryption.cpp')
+    aes = envBoot.Object('boot_aes%s' % suffix, './tiny-AES-c/aes.c')
 
     bootloader_objects = [bootloader, protocol, main, crypt, aes]
     elfBootloader = envBoot.Program(
@@ -77,7 +77,7 @@ def BuildBootloader(envBoot, testEnv, suffix):
     bootHex = envBoot.Hex(elfBootloader)
 
     #BootSize = envBoot.Size(elfBootloader, 'BootSize')
-    testAppObj = testEnv.Object('test_app_%s' % suffix, '#/./test_app.cpp')
+    testAppObj = testEnv.Object('test_app_%s' % suffix, './test_app.cpp')
     elfTestApp = testEnv.Program('test_app_%s' % suffix, testAppObj)
     testAppLss = testEnv.Disassembly(elfTestApp)
     testAppHex = testEnv.Hex(elfTestApp)
@@ -91,4 +91,4 @@ def BuildBootloader(envBoot, testEnv, suffix):
 
 BuildBootloader(env, testEnv, deviceName)
 
-Alias('Bootloader', bootTargets)
+env.Alias('Bootloader', bootTargets)

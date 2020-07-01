@@ -7,8 +7,6 @@ from pymodbus.exceptions import ModbusException
 from Crypto.Cipher import AES
 import binascii
 
-key = None
-
 
 modbusAddr = 1
 PageBufferSize = 64
@@ -34,7 +32,7 @@ modAddr = 1
 retries = 3
 
 
-def WriteRegs(clinet, addr, values):
+def WriteRegs(client, addr, values):
     rr = None
     for attempt in range(0, retries):
         #if len(values) < 20:
@@ -47,7 +45,7 @@ def WriteRegs(clinet, addr, values):
     raise rr
 
 
-def ReadHoldingRegs(clinet, addr, count):
+def ReadHoldingRegs(client, addr, count):
     rr = None
     for attempt in range(0, retries):
         rr = client.read_holding_registers(addr, count, unit=modAddr)
@@ -56,7 +54,7 @@ def ReadHoldingRegs(clinet, addr, count):
     raise rr
 
 
-def ReadInputRegs(clinet, addr, count):
+def ReadInputRegs(client, addr, count):
     rr = None
     for attempt in range(0, retries):
         rr = client.read_input_registers(addr, count, unit=modAddr)
@@ -114,12 +112,15 @@ def CheckError(client):
             raise Exception("Error: %u - Unknown" % errorCode)
 
 
-def WritePage(client, data, page, offset):
-    encryptor = AES.new(key, AES.MODE_ECB)
-    if len(data) % 16 != 0:
-        padding = [0] *  (16 - len(data) % 16)
-        data = data + padding
-    encData = encryptor.encrypt(bytes(data))
+def WritePage(client, data, page, offset, key):
+    if not key is None:
+        encryptor = AES.new(key, AES.MODE_ECB)
+        if len(data) % 16 != 0:
+            padding = [0] *  (16 - len(data) % 16)
+            data = data + padding
+        encData = encryptor.encrypt(bytes(data))
+    else:
+        encData = data
     modbusData = []
     for i in range(0, len(encData), 2):
         modbusData.append(encData[i] + (encData[i + 1] << 8))
@@ -171,8 +172,8 @@ def GetPageAddress(client, page):
     return result
 
 
-def BootInit():
-    client = ModbusClient(method='rtu', port='COM3',
+def BootInit(portName):
+    client = ModbusClient(method='rtu', port=portName,
                           stopbits=2, timeout=1, baudrate=115200)
     client.connect()
     return client
@@ -181,7 +182,7 @@ def Connect(client):
     data = [ActivateCommand]
     rr = WriteRegs(client, CommandAddress, data)
 
-def BootPrettyWritePage(client, data, page, offset):
+def BootPrettyWritePage(client, data, page, offset, key):
     print('Writing page #%u (%u bytes)\t' % (page, len(data)))
 
     ErasePage(client, page)
@@ -191,14 +192,17 @@ def BootPrettyWritePage(client, data, page, offset):
     for chunk in range(offset, offset + len(data), chunkSize):
         chunkData = data[chunk:chunk+chunkSize]
         print('Writing chunk #%x (%u bytes)\t' % (chunk, len(chunkData)))
-        WritePage(client, chunkData, page, chunk)
+        WritePage(client, chunkData, page, chunk, key)
         wordsWritten += chunkSize
 
     print('OK')
 
-def load_hex(firmwareFile, keystr):
-    global key
-    key = inascii.unhexlify(keystr)
+def load_hex(firmwareFile, keystr, portName):
+    if keystr is None:
+        key = None
+    else:
+        key = binascii.unhexlify(keystr)
+    
     print('Reading target file: "%s"' % firmwareFile)
     if os.path.isfile(firmwareFile):
         ih = IntelHex(firmwareFile)
@@ -210,7 +214,7 @@ def load_hex(firmwareFile, keystr):
     print('Start address: 0x%08x' % ih.minaddr())
     print('End address: 0x%08x' % ih.maxaddr())
     print('Total code size: %u bytes' % (len(hexItems)-1))
-    client = BootInit()
+    client = BootInit(portName)
     Connect(client)
 
     print('Device name: %s' % GetDeviceName(client))
@@ -235,7 +239,7 @@ def load_hex(firmwareFile, keystr):
             continue
         while addr >= pageEnd:
             if len(pageData) > 0:
-                BootPrettyWritePage(client, pageData, page, 0)
+                BootPrettyWritePage(client, pageData, page, 0, key)
             page += 1
             pageSize = GetPageSize(client, page)
             pageEnd = GetPageAddress(client, page) + pageSize
@@ -248,14 +252,17 @@ def load_hex(firmwareFile, keystr):
         pageData.append(0)
 
     # write last page
-    BootPrettyWritePage(client, pageData, page, 0)
+    BootPrettyWritePage(client, pageData, page, 0, key)
     print("Success")
     print("Reseting system")
     Reset(client)
 
 if __name__ == "__main__":
-    if len(sys.argv) <= 2:
-        raise Exception('Parameters expected: application.hex "AES-KEY"')
+    if len(sys.argv) <= 1:
+        raise Exception('Parameters expected: application.hex [AES-KEY]')
     firmwareFile = sys.argv[1]
-    key = sys.argv[2]
-    load_hex(firmwareFile, key)
+    keystr = None
+    if len(sys.argv) > 1:
+        keystr = sys.argv[2]
+    print ('Key: ', keystr)
+    load_hex(firmwareFile, keystr, 'COM3')
