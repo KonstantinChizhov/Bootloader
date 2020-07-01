@@ -29,7 +29,7 @@ CommandReset = 5
 ActivateCommand = 0x5555
 
 modAddr = 1
-retries = 3
+retries = 5
 
 
 def WriteRegs(client, addr, values):
@@ -179,7 +179,7 @@ def BootInit(portName):
     return client
 
 def Connect(client):
-    data = [ActivateCommand]
+    data = [0, 0, 0, ActivateCommand]
     rr = WriteRegs(client, CommandAddress, data)
 
 def BootPrettyWritePage(client, data, page, offset, key):
