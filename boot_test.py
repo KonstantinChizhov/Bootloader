@@ -196,63 +196,66 @@ def BootPrettyWritePage(client, data, page, offset):
 
     print('OK')
 
+def load_hex(firmwareFile, keystr):
+    global key
+    key = inascii.unhexlify(keystr)
+    print('Reading target file: "%s"' % firmwareFile)
+    if os.path.isfile(firmwareFile):
+        ih = IntelHex(firmwareFile)
+    else:
+        raise Exception('Target file is not exists "%s"' % firmwareFile)
 
-if len(sys.argv) <= 2:
-    raise Exception('Parameters expected: application.hex "AES-KEY"')
+    hexItems = ih.todict()
 
-firmwareFile = sys.argv[1]
-key = binascii.unhexlify(sys.argv[2])
+    print('Start address: 0x%08x' % ih.minaddr())
+    print('End address: 0x%08x' % ih.maxaddr())
+    print('Total code size: %u bytes' % (len(hexItems)-1))
+    client = BootInit()
+    Connect(client)
 
-print('Reading target file: "%s"' % firmwareFile)
-if os.path.isfile(firmwareFile):
-    ih = IntelHex(firmwareFile)
-else:
-    raise Exception('Target file is not exists "%s"' % firmwareFile)
+    print('Device name: %s' % GetDeviceName(client))
+    print('CPU name: %s' % GetMcuName(client))
+    print('MCU ID: %x' % GetMcuId(client))
+    print('Bootloader version: %d' % GetBootVersionCount(client))
+    pageCount = GetPageCount(client)
+    print('Flash page count: %u (%u)' % pageCount)
+    print('Total Flash size: %u' % (GetFlashSize(client)))
 
-hexItems = ih.todict()
+    # for i in range(0, pageCount[0]):
+    # 	pageSize = GetPageSize(client, i)
+    # 	print ("page %i size = %i" % (i, pageSize))
 
-print('Start address: 0x%08x' % ih.minaddr())
-print('End address: 0x%08x' % ih.maxaddr())
-print('Total code size: %u bytes' % (len(hexItems)-1))
-client = BootInit()
-Connect(client)
+    page = 0
+    pageSize = GetPageSize(client, page)
+    pageEnd = GetPageAddress(client, page) + pageSize
+    pageData = []
 
-print('Device name: %s' % GetDeviceName(client))
-print('CPU name: %s' % GetMcuName(client))
-print('MCU ID: %x' % GetMcuId(client))
-print('Bootloader version: %d' % GetBootVersionCount(client))
-pageCount = GetPageCount(client)
-print('Flash page count: %u (%u)' % pageCount)
-print('Total Flash size: %u' % (GetFlashSize(client)))
+    for addr, value in hexItems.items():
+        if not isinstance(addr, int):
+            continue
+        while addr >= pageEnd:
+            if len(pageData) > 0:
+                BootPrettyWritePage(client, pageData, page, 0)
+            page += 1
+            pageSize = GetPageSize(client, page)
+            pageEnd = GetPageAddress(client, page) + pageSize
+            pageData = []
+        pageData.append(value)
 
-# for i in range(0, pageCount[0]):
-# 	pageSize = GetPageSize(client, i)
-# 	print ("page %i size = %i" % (i, pageSize))
+    # align data to be written on 8 byte boundary
+    align = (8 - (len(pageData) & 7)) & 7
+    for i in range(align):
+        pageData.append(0)
 
-page = 0
-pageSize = GetPageSize(client, page)
-pageEnd = GetPageAddress(client, page) + pageSize
-pageData = []
+    # write last page
+    BootPrettyWritePage(client, pageData, page, 0)
+    print("Success")
+    print("Reseting system")
+    Reset(client)
 
-for addr, value in hexItems.items():
-    if not isinstance(addr, int):
-        continue
-    while addr >= pageEnd:
-        if len(pageData) > 0:
-            BootPrettyWritePage(client, pageData, page, 0)
-        page += 1
-        pageSize = GetPageSize(client, page)
-        pageEnd = GetPageAddress(client, page) + pageSize
-        pageData = []
-    pageData.append(value)
-
-# align data to be written on 8 byte boundary
-align = (8 - (len(pageData) & 7)) & 7
-for i in range(align):
-    pageData.append(0)
-
-# write last page
-BootPrettyWritePage(client, pageData, page, 0)
-print("Success")
-print("Reseting system")
-Reset(client)
+if __name__ == "__main__":
+    if len(sys.argv) <= 2:
+        raise Exception('Parameters expected: application.hex "AES-KEY"')
+    firmwareFile = sys.argv[1]
+    key = sys.argv[2]
+    load_hex(firmwareFile, key)
