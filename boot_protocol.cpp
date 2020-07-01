@@ -85,7 +85,6 @@ ModbusError BootloaderProtocol::ReadInputRegisters(uint16_t start, uint16_t coun
 
 ModbusError BootloaderProtocol::ReadHoldingRegisters(uint16_t start, uint16_t count, DataBuffer &buffer)
 {
-    _bootloader.Connected();
     uint16_t bootDataEnd = std::min<uint16_t>(start + count, sizeof(BootData) / 2);
     uint16_t *bootDataPtr = reinterpret_cast<uint16_t *>(&_bootloader.GetBootData());
     for (uint16_t reg = start; reg < bootDataEnd; reg++)
