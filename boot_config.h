@@ -36,7 +36,7 @@ typedef Pa2 DebugTxPin;
 typedef Pa3 DebugRxPin;
 
 #endif
-constexpr uint8_t BootModbusAddr = 1;
+constexpr uint8_t BootModbusAddr = 201;
 
 constexpr uint16_t PageBufferSize = 2048;
 constexpr uint16_t PageBufferAddr = 1024;
@@ -49,7 +49,7 @@ constexpr uint16_t BootVersion = 1;
 constexpr uint32_t EntryPointMarker1 = 0xA5A5A5A5;
 constexpr uint32_t EntryPointMarker2 = 0x5A5A5A5A;
 
-constexpr uint32_t BootStartTimeout = 2 * 1000;
+constexpr uint32_t BootStartTimeout = 5 * 1000;
 
 #if defined(_DEBUG) && _DEBUG
 #include <tiny_ostream.h>
