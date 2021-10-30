@@ -2,11 +2,12 @@ import os
 import sys
 from intelhex import IntelHex
 import time
-from pymodbus.client.sync import ModbusSerialClient as ModbusClient
+from pymodbus.client.sync import ModbusSerialClient as ModbusSerialClient
+from pymodbus.client.sync import ModbusTcpClient as ModbusTcpClient
 from pymodbus.exceptions import ModbusException
 from Crypto.Cipher import AES
 import binascii
-
+from urllib.parse import urlparse
 
 modbusAddr = 201
 PageBufferSize = 64
@@ -35,7 +36,7 @@ retries = 5
 def WriteRegs(client, addr, values):
     rr = None
     for attempt in range(0, retries):
-        #if len(values) < 20:
+        # if len(values) < 20:
         #    print("Write: %s" % str(values))
         rr = client.write_registers(addr, values, unit=modAddr)
         if isinstance(rr, ModbusException):
@@ -107,7 +108,8 @@ def CheckError(client):
     errorCode = rr.registers[0]
     if errorCode != 0:
         if errorCode < len(errorMessage):
-            raise Exception("Error: %u - %s" % (errorCode, errorMessage[errorCode]))
+            raise Exception("Error: %u - %s" %
+                            (errorCode, errorMessage[errorCode]))
         else:
             raise Exception("Error: %u - Unknown" % errorCode)
 
@@ -116,7 +118,7 @@ def WritePage(client, data, page, offset, key):
     if not key is None:
         encryptor = AES.new(key, AES.MODE_ECB)
         if len(data) % 16 != 0:
-            padding = [0] *  (16 - len(data) % 16)
+            padding = [0] * (16 - len(data) % 16)
             data = data + padding
         encData = encryptor.encrypt(bytes(data))
     else:
@@ -128,6 +130,7 @@ def WritePage(client, data, page, offset, key):
     cmdData = [page, offset, len(encData), CommandPageWrite]
     rr = WriteRegs(client, CommandAddress, cmdData)
     CheckError(client)
+
 
 def ErasePage(client, page):
     data = [page, 0, 0, CommandPageErase]
@@ -173,8 +176,13 @@ def GetPageAddress(client, page):
 
 
 def BootInit(portName):
-    client = ModbusClient(method='rtu', port=portName,
-                          stopbits=2, timeout=1, baudrate=115200)
+    if portName.startswith("tcp://"):
+        url = urlparse(portName)
+        print(url.hostname, url.port)
+        client = ModbusTcpClient(host=url.hostname, port=url.port)
+    else:
+        client = ModbusSerialClient(method='rtu', port=portName, stopbits=2, timeout=1, baudrate=115200)
+
     client.connect()
     return client
 
