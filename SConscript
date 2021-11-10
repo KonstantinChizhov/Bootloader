@@ -38,7 +38,7 @@ env = Environment(DEVICE=device,
                   toolpath=['%s/scons' % MCUCPP_PATH],
                   tools=['mcucpp'])
 
-testEnv =  Environment(DEVICE=deviceCopy,
+testEnv = Environment(DEVICE=deviceCopy,
                   toolpath=['%s/scons' % MCUCPP_PATH],
                   tools=['mcucpp'])
 
@@ -82,12 +82,14 @@ def BuildBootloader(envBoot, testEnv, suffix):
     testAppLss = testEnv.Disassembly(elfTestApp)
     testAppHex = testEnv.Hex(elfTestApp)
 
-    flash = envBoot.Flash(bootHex)
-    protect = envBoot.Protect(bootHex)
-    # flash = testEnv.Flash(elfTestApp)
+    bootTargets.extend([elfBootloader, bootLss, bootHex, elfTestApp, testAppLss, testAppHex])
 
-    bootTargets.extend([elfBootloader, bootLss, bootHex, elfTestApp, testAppLss, testAppHex, flash, protect])
-
+    if hasattr(envBoot.__class__, 'Flash') and callable(getattr(envBoot.__class__, 'Flash')):
+        flash = envBoot.Flash(bootHex)
+        protect = envBoot.Protect(bootHex)
+        # flash = testEnv.Flash(elfTestApp)
+        bootTargets.extend([flash, protect])
+       
 
 BuildBootloader(env, testEnv, deviceName)
 
