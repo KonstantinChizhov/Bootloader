@@ -5,6 +5,7 @@
 #include "bootloader.h"
 #include <modbus.h>
 #include "boot_config.h"
+#include <array>
 
 namespace Bootloader
 {

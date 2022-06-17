@@ -18,7 +18,7 @@ BootloaderProtocol::BootloaderProtocol(BootloaderApp &bootloader)
     : _bootloader{bootloader}
 {
 }
-using namespace std::placeholders;
+
 
 bool BootloaderProtocol::Init()
 {
