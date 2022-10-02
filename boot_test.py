@@ -9,7 +9,7 @@ from Crypto.Cipher import AES
 import binascii
 from urllib.parse import urlparse
 
-modbusAddr = 201
+
 PageBufferSize = 64
 PageBufferAddr = 1024
 PageMapAddr = 1024
@@ -29,8 +29,8 @@ CommandRunApplication = 4
 CommandReset = 5
 ActivateCommand = 0x5555
 
-modAddr = 1
-retries = 5
+modAddr = 201
+retries = 8
 
 
 def WriteRegs(client, addr, values):
@@ -181,7 +181,7 @@ def BootInit(portName):
         print(url.hostname, url.port)
         client = ModbusTcpClient(host=url.hostname, port=url.port)
     else:
-        client = ModbusSerialClient(method='rtu', port=portName, stopbits=2, timeout=1, baudrate=115200)
+        client = ModbusSerialClient(method='rtu', port=portName, stopbits=2, timeout=0.2, baudrate=115200)
 
     client.connect()
     return client
@@ -199,13 +199,13 @@ def BootPrettyWritePage(client, data, page, offset, key):
     wordsWritten = 0
     for chunk in range(offset, offset + len(data), chunkSize):
         chunkData = data[chunk:chunk+chunkSize]
-        print('Writing chunk #%x (%u bytes)\t' % (chunk, len(chunkData)))
+        #print('Writing chunk #%x (%u bytes)\t' % (chunk, len(chunkData)))
         WritePage(client, chunkData, page, chunk, key)
         wordsWritten += chunkSize
 
     print('OK')
 
-def load_hex(firmwareFile, keystr, portName):
+def load_hex(firmwareFile, keystr, portName, pagesToErase = None):
     if keystr is None:
         key = None
     else:
@@ -236,6 +236,11 @@ def load_hex(firmwareFile, keystr, portName):
     # for i in range(0, pageCount[0]):
     # 	pageSize = GetPageSize(client, i)
     # 	print ("page %i size = %i" % (i, pageSize))
+    
+    if pagesToErase is not None:
+        for page in pagesToErase:
+            print ('Erasing page:', page)
+            ErasePage(client, page)
 
     page = 0
     pageSize = GetPageSize(client, page)
@@ -247,7 +252,7 @@ def load_hex(firmwareFile, keystr, portName):
             continue
         while addr >= pageEnd:
             if len(pageData) > 0:
-                BootPrettyWritePage(client, pageData, page, 0, key)
+                BootPrettyWritePage(client, pageData, page, 0, key )
             page += 1
             pageSize = GetPageSize(client, page)
             pageEnd = GetPageAddress(client, page) + pageSize

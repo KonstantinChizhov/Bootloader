@@ -84,11 +84,11 @@ def BuildBootloader(envBoot, testEnv, suffix):
 
     bootTargets.extend([elfBootloader, bootLss, bootHex, elfTestApp, testAppLss, testAppHex])
 
-    if hasattr(envBoot.__class__, 'Flash') and callable(getattr(envBoot.__class__, 'Flash')):
-        flash = envBoot.Flash(bootHex)
-        protect = envBoot.Protect(bootHex)
-        # flash = testEnv.Flash(elfTestApp)
-        bootTargets.extend([flash, protect])
+    # if hasattr(envBoot.__class__, 'Flash') and callable(getattr(envBoot.__class__, 'Flash')):
+    flash = envBoot.Flash(bootHex)
+    protect = envBoot.Protect(bootHex)
+    # flash = testEnv.Flash(elfTestApp)
+    bootTargets.extend([flash, protect])
        
 
 BuildBootloader(env, testEnv, deviceName)
