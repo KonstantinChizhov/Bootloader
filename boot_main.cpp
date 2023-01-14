@@ -6,7 +6,6 @@
 #include "bootloader.h"
 #include "boot_protocol.h"
 
-
 using namespace Bootloader;
 
 BootloaderApp bootloader;
@@ -44,11 +43,11 @@ int main()
     DePin::Port::Enable();
 
 #if defined(_DEBUG) && _DEBUG
-    
+
     Clock::HsiClock::Enable();
     DebugDeviceClock::Set(UsartClockSrc::Hsi);
-	DebugDevice::Init(115200);
-	DebugDevice::SelectTxRxPins<DebugTxPin, DebugRxPin>();
+    DebugDevice::Init(115200);
+    DebugDevice::SelectTxRxPins<DebugTxPin, DebugRxPin>();
     cout << "Bootloader started\r\n";
 #endif
     Led::SetConfiguration(Led::Port::Out);
@@ -71,17 +70,27 @@ int main()
 
     Blink();
 
-    GetCurrentDispatcher().SetTimer(BootStartTimeout, []() { bootloader.Exit(); });
-
-    while (!bootloader.IsDone())
+    GetCurrentDispatcher().SetTimer(BootStartTimeout, []()
+                                    { bootloader.Exit(); });
+    do
     {
-        GetCurrentDispatcher().Poll();
-        Watchdog::Reset();
-    }
+        while (!bootloader.IsDone())
+        {
+            GetCurrentDispatcher().Poll();
+            Watchdog::Reset();
+        }
 #if defined(_DEBUG) && _DEBUG
-    cout << "Try running app\r\n";
+        cout << "Try running app\r\n";
 #endif
-    bootloader.RunApplication();
+        if(!bootloader.RunApplication())
+        {
+        #if defined(_DEBUG) && _DEBUG
+            cout << "No entry point found\r\n";
+        #endif
+        }
+        bootloader.Connected();
+    } while (true);
+    
     bootloader.Reset();
     return 0;
 }

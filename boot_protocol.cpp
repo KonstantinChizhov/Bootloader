@@ -85,6 +85,9 @@ ModbusError BootloaderProtocol::ReadInputRegisters(uint16_t start, uint16_t coun
 
 ModbusError BootloaderProtocol::ReadHoldingRegisters(uint16_t start, uint16_t count, DataBuffer &buffer)
 {
+    #if defined(_DEBUG) && _DEBUG
+    cout << "RD: " << setw(5) << start << setw(5) << count << "\r\n";
+    #endif
     uint16_t bootDataEnd = std::min<uint16_t>(start + count, sizeof(BootData) / 2);
     uint16_t *bootDataPtr = reinterpret_cast<uint16_t *>(&_bootloader.GetBootData());
     for (uint16_t reg = start; reg < bootDataEnd; reg++)
@@ -192,8 +195,10 @@ bool BootloaderProtocol::ExecuteCommand(BootCommand command)
         return _bootloader.RunApplication();
     case BootCommand::Reset:
         _bootloader.Reset();
+        break;
     case BootCommand::Activate:
         _bootloader.Connected();
+        break;
     case BootCommand::PageRead:
     case BootCommand::None:
         break;

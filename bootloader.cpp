@@ -199,6 +199,14 @@ bool BootloaderApp::FindEntryPoint(uint32_t *sp, uint32_t *entry)
 		_bootdata.error = BootError::EntryPointNotFound;
 		return false;
 	}
+	if(entryPoint.appEntryAddr == 0 || entryPoint.appEntryAddr == 0xffffffff)
+	{
+		_bootdata.error = BootError::EntryPointNotFound;
+		return false;
+	}
+#if defined(_DEBUG) && _DEBUG
+	cout << "Entry point found: 0x" << hex << entryPoint.appEntryAddr << "\r\n";
+#endif
 	*sp = entryPoint.appStackPointer;
 	*entry = entryPoint.appEntryAddr;
 	return true;
@@ -237,4 +245,3 @@ void BootloaderApp::Reset()
 {
 	NVIC_SystemReset();
 }
-
