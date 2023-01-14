@@ -199,7 +199,6 @@ def BootPrettyWritePage(client, data, page, offset, key):
     wordsWritten = 0
     for chunk in range(offset, offset + len(data), chunkSize):
         chunkData = data[chunk:chunk+chunkSize]
-        #print('Writing chunk #%x (%u bytes)\t' % (chunk, len(chunkData)))
         WritePage(client, chunkData, page, chunk, key)
         wordsWritten += chunkSize
 
@@ -233,10 +232,6 @@ def load_hex(firmwareFile, keystr, portName, pagesToErase = None):
     print('Flash page count: %u (%u)' % pageCount)
     print('Total Flash size: %u' % (GetFlashSize(client)))
 
-    # for i in range(0, pageCount[0]):
-    # 	pageSize = GetPageSize(client, i)
-    # 	print ("page %i size = %i" % (i, pageSize))
-    
     if pagesToErase is not None:
         for page in pagesToErase:
             print ('Erasing page:', page)
