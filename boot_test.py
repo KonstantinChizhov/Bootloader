@@ -2,9 +2,9 @@ import os
 import sys
 from intelhex import IntelHex
 import time
-from pymodbus.client.sync import ModbusSerialClient as ModbusSerialClient
-from pymodbus.client.sync import ModbusTcpClient as ModbusTcpClient
-from pymodbus.exceptions import ModbusException
+from pymodbus.client.serial import ModbusSerialClient as ModbusSerialClient
+from pymodbus.client.tcp import ModbusTcpClient as ModbusTcpClient
+from pymodbus.exceptions import ModbusException, ModbusIOException
 from Crypto.Cipher import AES
 import binascii
 from urllib.parse import urlparse
