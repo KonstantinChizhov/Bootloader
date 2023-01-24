@@ -29,6 +29,7 @@ bool BootloaderProtocol::Init()
     BootDevice::Init(115200, BootDevice::Default | BootDevice::TwoStopBits);
     BootDevice::SelectTxRxPins<TxPin, RxPin>();
     BootDevice::SetRxTimeout(20);
+    RxPin::SetPullUp(RxPin::PullMode::PullUp);
 
     BootDevice::SelectDePin<DePin>();
 
