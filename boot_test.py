@@ -204,12 +204,19 @@ def BootPrettyWritePage(client, data, page, offset, key):
 
     print('OK')
 
-def load_hex(firmwareFile, keystr, portName, pagesToErase = None):
+def load_hex(firmwareFile, keystr, portName, pagesToErase = None, unit = None):
     if keystr is None:
         key = None
     else:
         key = binascii.unhexlify(keystr)
+
+    global modAddr
+    if unit is not None:
+        modAddr = unit
     
+    client = BootInit(portName)
+    Connect(client)
+
     print('Reading target file: "%s"' % firmwareFile)
     if os.path.isfile(firmwareFile):
         ih = IntelHex(firmwareFile)
@@ -221,8 +228,7 @@ def load_hex(firmwareFile, keystr, portName, pagesToErase = None):
     print('Start address: 0x%08x' % ih.minaddr())
     print('End address: 0x%08x' % ih.maxaddr())
     print('Total code size: %u bytes' % (len(hexItems)-1))
-    client = BootInit(portName)
-    Connect(client)
+    
 
     print('Device name: %s' % GetDeviceName(client))
     print('CPU name: %s' % GetMcuName(client))
