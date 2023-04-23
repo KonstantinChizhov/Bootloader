@@ -38,7 +38,7 @@ def WriteRegs(client, addr, values):
     for attempt in range(0, retries):
         # if len(values) < 20:
         #    print("Write: %s" % str(values))
-        rr = client.write_registers(addr, values, unit=modAddr)
+        rr = client.write_registers(addr, values, slave=modAddr)
         if isinstance(rr, ModbusException):
             print("Error: %s" % str(rr))
             continue
@@ -49,7 +49,7 @@ def WriteRegs(client, addr, values):
 def ReadHoldingRegs(client, addr, count):
     rr = None
     for attempt in range(0, retries):
-        rr = client.read_holding_registers(addr, count, unit=modAddr)
+        rr = client.read_holding_registers(addr, count, slave=modAddr)
         if not isinstance(rr, ModbusException):
             return rr
     raise rr
@@ -58,7 +58,7 @@ def ReadHoldingRegs(client, addr, count):
 def ReadInputRegs(client, addr, count):
     rr = None
     for attempt in range(0, retries):
-        rr = client.read_input_registers(addr, count, unit=modAddr)
+        rr = client.read_input_registers(addr, count, slave=modAddr)
         if not isinstance(rr, ModbusException):
             return rr
     raise rr
@@ -140,8 +140,8 @@ def ErasePage(client, page):
 
 def Reset(client):
     data = [0, 0, 0, CommandReset]
-    rr = client.write_registers(CommandAddress, data, unit=modAddr)
-    rr = client.write_registers(CommandAddress, data, unit=modAddr)
+    rr = client.write_registers(CommandAddress, data, slave=modAddr)
+    rr = client.write_registers(CommandAddress, data, slave=modAddr)
     # ignore errors here, bootlodaer will not responce anyway
 
 
