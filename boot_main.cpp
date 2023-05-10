@@ -37,12 +37,12 @@ int main()
     Portc::Enable();
     Portd::Enable();
 
-    Porta::SetConfiguration(0xffff, Porta::In);
+    Porta::SetConfiguration(0x1fff, Porta::In);
     Portb::SetConfiguration(0xffff, Portb::In);
     Portc::SetConfiguration(0xffff, Portc::In);
     Portd::SetConfiguration(0xffff, Portd::In);
 
-    Porta::SetPullUp(0xffff, Porta::PullDown);
+    Porta::SetPullUp(0x1fff, Porta::PullDown);
     Portb::SetPullUp(0xffff, Portb::PullDown);
     Portc::SetPullUp(0xffff, Portc::PullDown);
     Portd::SetPullUp(0xffff, Portd::PullDown);
