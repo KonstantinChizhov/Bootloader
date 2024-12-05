@@ -45,7 +45,7 @@ constexpr uint16_t CommandAddress = 100;
 constexpr uint16_t CommandParamsSize = 100;
 
 
-constexpr uint16_t BootVersion = 1;
+constexpr uint16_t BootVersion = 2;
 constexpr uint32_t EntryPointMarker1 = 0xA5A5A5A5;
 constexpr uint32_t EntryPointMarker2 = 0x5A5A5A5A;
 

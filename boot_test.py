@@ -10,7 +10,7 @@ import binascii
 from urllib.parse import urlparse
 
 
-PageBufferSize = 64
+PageBufferSize = 128
 PageBufferAddr = 1024
 PageMapAddr = 1024
 CommandAddress = 100
@@ -35,20 +35,22 @@ retries = 8
 
 def WriteRegs(client, addr, values):
     rr = None
-    for attempt in range(0, retries):
+    for _ in range(0, retries):
         # if len(values) < 20:
         #    print("Write: %s" % str(values))
         rr = client.write_registers(addr, values, slave=modAddr)
         if isinstance(rr, ModbusException):
-            print("Error: %s" % str(rr))
+            print(f'\n{rr}')
             continue
+        if rr.isError():
+            raise ModbusException(str(rr))
         return rr
     raise rr
 
 
 def ReadHoldingRegs(client, addr, count):
     rr = None
-    for attempt in range(0, retries):
+    for _ in range(0, retries):
         rr = client.read_holding_registers(addr, count, slave=modAddr)
         if not isinstance(rr, ModbusException):
             return rr
@@ -57,7 +59,7 @@ def ReadHoldingRegs(client, addr, count):
 
 def ReadInputRegs(client, addr, count):
     rr = None
-    for attempt in range(0, retries):
+    for _ in range(0, retries):
         rr = client.read_input_registers(addr, count, slave=modAddr)
         if not isinstance(rr, ModbusException):
             return rr
@@ -89,22 +91,25 @@ def GetBootVersionCount(client):
 
 def CheckError(client):
     errorMessage = ["Success",
-        "Argument Error",
-        "Not Flash Address",
-        "Cross Page Bounds",
-        "Length Not Aligned",
-        "Page Is Protected",
-        "Addr Not Aligned",
-        "Region Is Not Clear",
-        "Writing Error",
-        "Wrong Page Number",
-        "Erase Error",
-        "Error Storing Entry Point",
-        "Entry Point Not Found",
-        "Wrong Command",
-        "Failed to decrypt"]
+                    "Argument Error",
+                    "Not Flash Address",
+                    "Cross Page Bounds",
+                    "Length Not Aligned",
+                    "Page Is Protected",
+                    "Addr Not Aligned",
+                    "Region Is Not Clear",
+                    "Writing Error",
+                    "Wrong Page Number",
+                    "Erase Error",
+                    "Error Storing Entry Point",
+                    "Entry Point Not Found",
+                    "Wrong Command",
+                    "Failed to decrypt"]
 
     rr = ReadHoldingRegs(client, 42, 1)
+    if isinstance(rr, ModbusException):
+        raise rr
+
     errorCode = rr.registers[0]
     if errorCode != 0:
         if errorCode < len(errorMessage):
@@ -114,7 +119,7 @@ def CheckError(client):
             raise Exception("Error: %u - Unknown" % errorCode)
 
 
-def WritePage(client, data, page, offset, key):
+def WritePageBuffer(client, data, page, offset, key):
     if not key is None:
         encryptor = AES.new(key, AES.MODE_ECB)
         if len(data) % 16 != 0:
@@ -126,22 +131,25 @@ def WritePage(client, data, page, offset, key):
     modbusData = []
     for i in range(0, len(encData), 2):
         modbusData.append(encData[i] + (encData[i + 1] << 8))
-    rr = WriteRegs(client, PageBufferAddr, modbusData)
+    # print(f'Chunk {hex(offset)}, {len(encData)} bytes ', end='')
+    
+    WriteRegs(client, PageBufferAddr, modbusData)
+
     cmdData = [page, offset, len(encData), CommandPageWrite]
-    rr = WriteRegs(client, CommandAddress, cmdData)
-    CheckError(client)
+    WriteRegs(client, CommandAddress, cmdData)
+    print('.', end='', flush=True)
 
 
 def ErasePage(client, page):
     data = [page, 0, 0, CommandPageErase]
-    rr = WriteRegs(client, CommandAddress, data)
+    WriteRegs(client, CommandAddress, data)
     CheckError(client)
 
 
 def Reset(client):
     data = [0, 0, 0, CommandReset]
-    rr = client.write_registers(CommandAddress, data, slave=modAddr)
-    rr = client.write_registers(CommandAddress, data, slave=modAddr)
+    client.write_registers(CommandAddress, data, slave=modAddr)
+    client.write_registers(CommandAddress, data, slave=modAddr)
     # ignore errors here, bootlodaer will not responce anyway
 
 
@@ -179,32 +187,37 @@ def BootInit(portName):
     if portName.startswith("tcp://"):
         url = urlparse(portName)
         print(url.hostname, url.port)
-        client = ModbusTcpClient(host=url.hostname, port=url.port)
+        client = ModbusTcpClient(host=url.hostname, port=url.port, timeout=1.0)
     else:
-        client = ModbusSerialClient(method='rtu', port=portName, stopbits=2, timeout=0.2, baudrate=115200)
+        client = ModbusSerialClient(
+            method='rtu', port=portName, stopbits=2, timeout=0.2, baudrate=115200)
 
     client.connect()
     return client
+
 
 def Connect(client):
     data = [0, 0, 0, ActivateCommand]
     rr = WriteRegs(client, CommandAddress, data)
 
+
 def BootPrettyWritePage(client, data, page, offset, key):
-    print('Writing page #%u (%u bytes)\t' % (page, len(data)))
+    print('Writing page\t#%u (%u bytes), %u' %
+          (page, len(data), offset), end='')
 
     ErasePage(client, page)
-    
+
     chunkSize = PageBufferSize
-    wordsWritten = 0
+
     for chunk in range(offset, offset + len(data), chunkSize):
         chunkData = data[chunk:chunk+chunkSize]
-        WritePage(client, chunkData, page, chunk, key)
-        wordsWritten += chunkSize
+        WritePageBuffer(client, chunkData, page, chunk, key)
 
+    CheckError(client)
     print('OK')
 
-def load_hex(firmwareFile, keystr, portName, pagesToErase = None, unit = None):
+
+def load_hex(firmwareFile, keystr, portName, pagesToErase=None, unit=None):
     if keystr is None:
         key = None
     else:
@@ -213,7 +226,7 @@ def load_hex(firmwareFile, keystr, portName, pagesToErase = None, unit = None):
     global modAddr
     if unit is not None:
         modAddr = unit
-    
+
     client = BootInit(portName)
     Connect(client)
 
@@ -228,7 +241,6 @@ def load_hex(firmwareFile, keystr, portName, pagesToErase = None, unit = None):
     print('Start address: 0x%08x' % ih.minaddr())
     print('End address: 0x%08x' % ih.maxaddr())
     print('Total code size: %u bytes' % (len(hexItems)-1))
-    
 
     print('Device name: %s' % GetDeviceName(client))
     print('CPU name: %s' % GetMcuName(client))
@@ -240,7 +252,7 @@ def load_hex(firmwareFile, keystr, portName, pagesToErase = None, unit = None):
 
     if pagesToErase is not None:
         for page in pagesToErase:
-            print ('Erasing page:', page)
+            print('Erasing page:', page)
             ErasePage(client, page)
 
     page = 0
@@ -253,7 +265,7 @@ def load_hex(firmwareFile, keystr, portName, pagesToErase = None, unit = None):
             continue
         while addr >= pageEnd:
             if len(pageData) > 0:
-                BootPrettyWritePage(client, pageData, page, 0, key )
+                BootPrettyWritePage(client, pageData, page, 0, key)
             page += 1
             pageSize = GetPageSize(client, page)
             pageEnd = GetPageAddress(client, page) + pageSize
@@ -271,6 +283,7 @@ def load_hex(firmwareFile, keystr, portName, pagesToErase = None, unit = None):
     print("Reseting system")
     Reset(client)
 
+
 if __name__ == "__main__":
     if len(sys.argv) <= 1:
         raise Exception('Parameters expected: application.hex [AES-KEY]')
@@ -278,5 +291,5 @@ if __name__ == "__main__":
     keystr = None
     if len(sys.argv) > 1:
         keystr = sys.argv[2]
-    print ('Key: ', keystr)
-    load_hex(firmwareFile, keystr, 'COM3')
+    print('Key: ', keystr)
+
